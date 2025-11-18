@@ -253,6 +253,29 @@ if (window.hljs) {
 
 
 
+<style type="text/css">
+
+div.csl-bib-body { }
+div.csl-entry {
+clear: both;
+margin-bottom: 0em;
+}
+.hanging div.csl-entry {
+margin-left:2em;
+text-indent:-2em;
+}
+div.csl-left-margin {
+min-width:2em;
+float:left;
+}
+div.csl-right-inline {
+margin-left:2em;
+padding-left:1em;
+}
+div.csl-indent {
+margin-left: 2em;
+}
+</style>
 
 
 
@@ -357,6 +380,29 @@ display: none;
 </div>
 
 
+<div id="introduction" class="section level3">
+<h3>Introduction</h3>
+<p>At this point, we have gone through a number of methods for
+processing spatial data. Many of these were
+<strong>non-parametric</strong> or <strong>semi-parametric</strong>:
+this means that it can be difficult to link specific changes in a
+parameter or covariate to the intended result. In addition, many have
+been <strong>spatially implicit</strong>–they use coordinates as a proxy
+for spatial structure rather than modelling some <em>true space</em>.
+INLA can do all these too but is especially powerful for
+<strong>parametric</strong> and <strong>spatially explicit</strong>
+models. If you want to conduct inference on your data, then these
+methods are perfect for you!</p>
+</div>
+<div id="definitions" class="section level2">
+<h2>Definitions</h2>
+<p>Before going too deep into the package details, first we need to
+ensure we’re familiar with the language of spatial statistics. The point
+is not to teach theory (which will mostly be omitted) but to ensure we
+have a <em>shared language</em> when questions arise. If you
+<em>are</em> interested in the theory, there are numerous good <a href="https://www.paulamoraga.com/book-spatial/">resources</a> out
+there.<span class="citation"><sup>1–3</sup></span></p>
+</div>
 <div id="r-markdown" class="section level2">
 <h2>R Markdown</h2>
 <p>This is an R Markdown document. Markdown is a simple formatting
@@ -382,6 +428,26 @@ chunk like this:</p>
 <p>Note that the <code>echo = FALSE</code> parameter was added to the
 code chunk to prevent printing of the R code that generated the
 plot.</p>
+<div id="refs" class="references csl-bib-body" entry-spacing="0" line-spacing="2">
+<div id="ref-blangiardo_spatial_2015" class="csl-entry">
+<div class="csl-left-margin">1. </div><div class="csl-right-inline">Blangiardo, M. &amp; Cameletti, M. <em>Spatial
+and Spatio-Temporal <span>Bayesian</span> Models with
+<span>R</span>-<span>INLA</span></em>. (John Wiley; Sons, Inc,
+Chichester, West Sussex, 2015).</div>
+</div>
+<div id="ref-moraga_geospatial_2019" class="csl-entry">
+<div class="csl-left-margin">2. </div><div class="csl-right-inline">Moraga, P. <em>Geospatial <span>Health</span>
+<span>Data</span>: <span>Modeling</span> and <span>Visualization</span>
+with <span>R</span>-<span>INLA</span> and <span>Shiny</span></em>.
+(Chapman; Hall/CRC, New York, 2019). doi:<a href="https://doi.org/10.1201/9780429341823">10.1201/9780429341823</a>.</div>
+</div>
+<div id="ref-moraga_spatial_2023" class="csl-entry">
+<div class="csl-left-margin">3. </div><div class="csl-right-inline">Moraga, P. <em><a href="https://www.paulamoraga.com/book-spatial/">Spatial
+<span>Statistics</span> for <span>Data</span> <span>Science</span>:
+<span>Theory</span> and <span>Practice</span> with
+<span>R</span></a></em>. (2023).</div>
+</div>
+</div>
 </div>
 
 

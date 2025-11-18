@@ -3,7 +3,18 @@ title: "An Introduction to INLA-SPDE in R"
 author: "Misha Tseitliani"
 date: "2025-11-25"
 output: html_document
+bibliography: refINLA.bib
+csl: nature.csl
 ---
+
+### Introduction
+
+At this point, we have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**--they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then these methods are perfect for you!
+
+## Definitions
+
+Before going too deep into the package details, first we need to ensure we're familiar with the language of spatial statistics. The point is not to teach theory (which will mostly be omitted) but to ensure we have a *shared language* when questions arise. If you *are* interested in the theory, there are numerous good [resources](https://www.paulamoraga.com/book-spatial/) out there.[@blangiardo_spatial_2015; @moraga_geospatial_2019; @moraga_spatial_2023] 
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -28,3 +39,5 @@ plot(pressure)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+### References
