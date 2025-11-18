@@ -7,18 +7,100 @@ bibliography: refINLA.bib
 csl: nature.csl
 ---
 
-# Introduction
+# Background
 
 At this point, we have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**: they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then this might be perfect for you!
 
-## Definitions
+# Definitions
 
-Before going too deep into the package details, first we need to ensure we're familiar with the language of spatial statistics. The point is not to teach theory (which will mostly be omitted) but to ensure we have a *shared language* when questions arise. If you *are* interested in the theory, there are numerous good [resources](https://www.paulamoraga.com/book-spatial/) out there.[@blangiardo_spatial_2015; @moraga_geospatial_2019; @moraga_spatial_2023] 
+Before going too deep into the package details, first we need to ensure we're familiar with the language of spatial statistics. The point is not to teach theory (which will mostly be omitted) but to ensure we have a *shared language* when questions arise. If you *are* interested in the theory, there are numerous good [resources](https://www.paulamoraga.com/book-spatial/) out there.[@blangiardo_spatial_2015; @moraga_geospatial_2019; @moraga_spatial_2023]
+
+INLA is theoretically inspired by hierarchical and state space models and has both **latent** and **observed** processes:
+
+* **latent process**: the *true* environmental reality (e.g., number of species in a sampling plot). Also called a **state process**.
+* **observation process**: what we see with our data (e.g., the number of species *recorded* in a sampling plot). With a normal model, this is what you are looking at.
+
+With that sorted, spatial modelling has vocabulary corresponding to the geospatial language you know (and maybe love):
+
+* **(Poisson) point process**: a 2D distribution for **vector data** and the basis of many geospatial models.
+* **Cox process**: a doubly stochastic Poisson process for **vector data** where the intensity (i.e., expected number of points in a specific area) is itself stochastically random. INLA has special functions for Cox and LGCP (log-Gaussian Cox process) models.
+* **Gaussian random field**: a continuous 2D field for **raster data**. In essence, fields are the **latent process** from which you draw distributions (via sampling).
+* **Gauss-Markov random field (GMRF)**: a Gaussian random field for **raster data** where values structurally depend on some specific distance, time, etc (i.e., Markovian dependencies) but are otherwise independent.
+
+To reiterate, INLA's spatial models are directly based on GMRFs, and point process models are treated as drawn from some latent GMRF. In essence, this means that you can always include raster data (e.g., as covariates) directly in your models even if your response is vector data.
+
+A little late at this point, but what exactly is INLA? Integrated Nested Laplace Approximations (INLA) are a method of estimating Bayesian models that run faster than MCMC (Markov Chain Monte Carlo) while still generating similar results. Spatial models in the `INLA` package use the SPDE (Stochastic Partial Differential Equations) approach to better fit spatial structures: hence the name INLA-SPDE. These are fit over a spatial mesh using splines to again, run faster than MCMC. In practice, users need only specify a spatial mesh and regression formulation (i.e., INLA's models are linear additive regression models) to get results.
+
+# Assumptions
+
+As a general rule of thumb, INLA-SPDE models are more rigid, spatially explicit, and accessible than MCMC. They also run much faster. In exchange, they come with a few assumptions:
+
+* **Stationarity**: the underlying stochastic process is space-invariant (and time-invariant in spatiotemporal models). This would mean that your latent field should have a consistent mean and variance across the sampling domain. In practice, `INLA` has a default parameter `alpha = 2` that lets SPDEs accommodate non-stationarity.[@ingebrigtsen_spatial_2014; @gomez-rubio_bayesian_2020]
+* **Isotropy**: covariance depends only on the distance between points (i.e., the spatial field is rotation-invariant). This assumption is quite strict, but some exceptions (e.g., diffusion and barrier models) are possible using supplemental packages like `INLAspacetime`. If you want to model impassable barriers (e.g., fences), see [this vignette](https://eliaskrainski.github.io/INLAspacetime/articles/web/barrierExample.html) for more information. There is debate on how much this impacts edge/boundary effects, but best practice is to define your study area to be a bit larger just in case. [@lindgren_bayesian_2015]
+
+These two major assumptions are largely theoretical and are often violated by real-world data and scientific publications. Just note them and move on if this happens to you.
+
+Beyond those, simple models function similarly to GAMMs (generalised additive mixed models) and include those assumptions:
+
+* **Conditional independence**: observations are independent aside from the specified spatial and covariate structures.
+* **Appropriate mean-variance relationships**: you are using the correct distribution and specifying its parameters appropriately. Don't model binary data with a Gaussian, for example.
+* **Link-scale linearity**: with the exception of more complicated hierarchical models, all your covariates will be in a single equation added together. Is this reasonable?
+* **Separability (e.g., collinearity)**: *for inference only*, you should avoid adding multiple terms that correlate with each other. In practice, you'll end up with untrustworthy estimates for any term that has this problem.
 
 
-```{r setup, include=FALSE}
+# Worked Example
+
+That's enough theory; let's apply this to an actual example. This section will walk through an INLA-SPDE modelling pipeline from package installation to model diagnostics and comparison.
+
+### Package Installation
+
+```{r global, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+First, we'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` vignette](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install).
+
+```{r imports, eval = FALSE}
+# install INLA following the online instructions
+# Finn reccomends installing the testing version due to lots of updates recently
+# but you can always replace with the stable version if you'd like
+install.packages("INLA",repos=c(getOption("repos"),INLA="https://inla.r-inla-download.org/R/testing"), dep=TRUE) 
+
+# install inlabru
+install.packages("inlabru")
+# install fmesher
+install.packages("fmesher")
+```
+
+Now, we can get our working environment in order.
+
+```{r setup, results = FALSE, message = FALSE, warning = FALSE}
+# set working directory to the root folder of the project I'm working in 
+setwd(here::here())
+
+# activate the packages as needed
+library(tidyverse)
+library(INLA)
+library(inlabru)
+library(fmesher)
+# anything spatial relies on sf
+library(sf)
+```
+
+### Data Setup
+
+We'll use the Kilpisjärvi data from previous examples to model species richness. First thing we need to do is set up the spatial structure.
+
+```{r data, results = FALSE, message = FALSE}
+# import the data
+kjRaw <- read_csv("Kilpisjarvi.csv")
+# make spatial
+kjGeo <- st_as_sf(kjRaw, 
+                  coords = c("Lon", "Lat"),
+                  crs = 4326)
+```
+
+
 
 ## R Markdown
 
