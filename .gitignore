@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+02_tidyverse.html
+02_tidyverse_introduction.R
+Kilpisjarvi.csv
+SkeletonOuline.txt
