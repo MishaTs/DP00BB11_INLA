@@ -27,7 +27,7 @@ With that sorted, spatial modelling has vocabulary corresponding to the geospati
 * **Gaussian random field**: a continuous 2D field for **raster data**. In essence, fields are the **latent process** from which you draw distributions (via sampling).
 * **Gauss-Markov random field (GMRF)**: a Gaussian random field for **raster data** where values structurally depend on some specific distance, time, etc (i.e., Markovian dependencies) but are otherwise independent.
 
-To reiterate, INLA's spatial models are directly based on GMRFs, and point process models are treated as drawn from some latent GMRF. In essence, this means that you can always include raster data (e.g., as covariates) directly in your models even if your response is vector data.
+To reiterate, INLA's spatial models are directly based on GMRFs, and point process models are treated as drawn from some latent GMRF. This means that you can always include raster data (e.g., as covariates) directly in your models even if your response is vector data.
 
 ### So, INLA?
 
