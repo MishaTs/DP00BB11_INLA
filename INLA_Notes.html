@@ -393,9 +393,8 @@ space</em>. INLA can do all these too but is especially powerful for
 <strong>parametric</strong> and <strong>spatially explicit</strong>
 models. If you want to conduct inference on your data, then this might
 be perfect for you!</p>
-</div>
-<div id="definitions" class="section level1">
-<h1>Definitions</h1>
+<div id="definitions" class="section level2">
+<h2>Definitions</h2>
 <p>Before going too deep into the package details, first we need to
 ensure we’re familiar with the language of spatial statistics. The point
 is not to teach theory (which will mostly be omitted) but to ensure we
@@ -437,19 +436,21 @@ point process models are treated as drawn from some latent GMRF. In
 essence, this means that you can always include raster data (e.g., as
 covariates) directly in your models even if your response is vector
 data.</p>
-<p>A little late at this point, but what exactly is INLA? Integrated
-Nested Laplace Approximations (INLA) are a method of estimating Bayesian
-models that run faster than MCMC (Markov Chain Monte Carlo) while still
-generating similar results. Spatial models in the <code>INLA</code>
-package use the SPDE (Stochastic Partial Differential Equations)
-approach to better fit spatial structures: hence the name INLA-SPDE.
-These are fit over a spatial mesh using splines to again, run faster
-than MCMC. In practice, users need only specify a spatial mesh and
-regression formulation (i.e., INLA’s models are linear additive
-regression models) to get results.</p>
+<div id="so-inla" class="section level3">
+<h3>So, INLA?</h3>
+<p><strong>Integrated Nested Laplace Approximations (INLA)</strong> are
+a method of estimating Bayesian models that run faster than MCMC (Markov
+Chain Monte Carlo) while still generating similar results. Spatial
+models in the <code>INLA</code> package use the <strong>SPDE (Stochastic
+Partial Differential Equations)</strong> approach to better fit spatial
+structures: hence the name INLA-SPDE. These are fit over a spatial mesh
+using splines to again, run faster than MCMC. In practice, users need
+only specify a spatial mesh and regression formulation (i.e., INLA’s
+models are linear additive regression models) to get results.</p>
 </div>
-<div id="assumptions" class="section level1">
-<h1>Assumptions</h1>
+</div>
+<div id="assumptions" class="section level2">
+<h2>Assumptions</h2>
 <p>As a general rule of thumb, INLA-SPDE models are more rigid,
 spatially explicit, and accessible than MCMC. They also run much faster.
 In exchange, they come with a few assumptions:</p>
@@ -491,6 +492,7 @@ inference only</em>, you should avoid adding multiple terms that
 correlate with each other. In practice, you’ll end up with untrustworthy
 estimates for any term that has this problem.</li>
 </ul>
+</div>
 </div>
 <div id="worked-example" class="section level1">
 <h1>Worked Example</h1>

@@ -11,7 +11,7 @@ csl: nature.csl
 
 At this point, we have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**: they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then this might be perfect for you!
 
-# Definitions
+## Definitions
 
 Before going too deep into the package details, first we need to ensure we're familiar with the language of spatial statistics. The point is not to teach theory (which will mostly be omitted) but to ensure we have a *shared language* when questions arise. If you *are* interested in the theory, there are numerous good [resources](https://www.paulamoraga.com/book-spatial/) out there.[@blangiardo_spatial_2015; @moraga_geospatial_2019; @moraga_spatial_2023]
 
@@ -29,9 +29,11 @@ With that sorted, spatial modelling has vocabulary corresponding to the geospati
 
 To reiterate, INLA's spatial models are directly based on GMRFs, and point process models are treated as drawn from some latent GMRF. In essence, this means that you can always include raster data (e.g., as covariates) directly in your models even if your response is vector data.
 
-A little late at this point, but what exactly is INLA? Integrated Nested Laplace Approximations (INLA) are a method of estimating Bayesian models that run faster than MCMC (Markov Chain Monte Carlo) while still generating similar results. Spatial models in the `INLA` package use the SPDE (Stochastic Partial Differential Equations) approach to better fit spatial structures: hence the name INLA-SPDE. These are fit over a spatial mesh using splines to again, run faster than MCMC. In practice, users need only specify a spatial mesh and regression formulation (i.e., INLA's models are linear additive regression models) to get results.
+### So, INLA?
 
-# Assumptions
+**Integrated Nested Laplace Approximations (INLA)** are a method of estimating Bayesian models that run faster than MCMC (Markov Chain Monte Carlo) while still generating similar results. Spatial models in the `INLA` package use the **SPDE (Stochastic Partial Differential Equations)** approach to better fit spatial structures: hence the name INLA-SPDE. These are fit over a spatial mesh using splines to again, run faster than MCMC. In practice, users need only specify a spatial mesh and regression formulation (i.e., INLA's models are linear additive regression models) to get results.
+
+## Assumptions
 
 As a general rule of thumb, INLA-SPDE models are more rigid, spatially explicit, and accessible than MCMC. They also run much faster. In exchange, they come with a few assumptions:
 
