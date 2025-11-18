@@ -16,4 +16,4 @@ To get this (or another repo) set up in your RStudio:
 
 1. Create the relevant repo on [Github](https://github.com/).
 2. In RStudio: *File* > *New Project* > *Version Control* > *Git*
-3. Copy and paste the remote repo SSH from GitHub (e.g. [git@github.com:MishaTs/DP00BB11_INLA.git](https://github.com/MishaTs/DP00BB11_INLA.git) and voilà!
+3. Copy and paste the remote repo SSH from GitHub (e.g. [git@github.com:MishaTs/DP00BB11_INLA.git](git@github.com:MishaTs/DP00BB11_INLA.git) and voilà!
