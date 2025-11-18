@@ -432,10 +432,9 @@ on some specific distance, time, etc (i.e., Markovian dependencies) but
 are otherwise independent.</li>
 </ul>
 <p>To reiterate, INLA’s spatial models are directly based on GMRFs, and
-point process models are treated as drawn from some latent GMRF. In
-essence, this means that you can always include raster data (e.g., as
-covariates) directly in your models even if your response is vector
-data.</p>
+point process models are treated as drawn from some latent GMRF. This
+means that you can always include raster data (e.g., as covariates)
+directly in your models even if your response is vector data.</p>
 <div id="so-inla" class="section level3">
 <h3>So, INLA?</h3>
 <p><strong>Integrated Nested Laplace Approximations (INLA)</strong> are
@@ -540,6 +539,40 @@ kjRaw &lt;- read_csv(&quot;Kilpisjarvi.csv&quot;)
 kjGeo &lt;- st_as_sf(kjRaw, 
                   coords = c(&quot;Lon&quot;, &quot;Lat&quot;),
                   crs = 4326)</code></pre>
+<p><code>INLA</code> can handle NAs in covariate data but not in the
+response, so make sure to check for messier data! There is nothing of
+concern for us if we’re modelling <code>species_rich</code> as our
+response.</p>
+<pre class="r"><code># NAs per column
+t(kjRaw %&gt;% summarise(across(everything(), ~ sum(is.na(.)))))</code></pre>
+<pre><code>##                         [,1]
+## site                       0
+## Lon                        0
+## Lat                        0
+## E_TM35FIN                  0
+## N_TM35FIN                  0
+## species_rich               0
+## cwm_max_height             0
+## cwm_LDMC                  11
+## cwm_leaf_area             10
+## Saxifraga_cernua           0
+## Rhododendron_lapponicum    0
+## Arctous_alpina             0
+## Dryas_octopetala           0
+## Cornus_suecica             0
+## Vaccinium_myrtillus        0
+## Empetrum_nigrum            0
+## Bistorta_vivipara          0
+## Geranium_sylvaticum        0
+## Trollius_europaeus         0
+## Gersyl_max_height        255
+## Gersyl_LDMC              272
+## Gersyl_leaf_area         271
+## FDD_T3                    14
+## GDD3_T3                   14
+## mean_T1                   14
+## median_moist              14
+## n_snow_days               14</code></pre>
 </div>
 <div id="r-markdown" class="section level2">
 <h2>R Markdown</h2>

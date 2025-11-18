@@ -91,7 +91,7 @@ library(sf)
 
 ### Data Setup
 
-We'll use the Kilpisjärvi data from previous examples to model species richness. First thing we need to do is set up the spatial structure.
+We'll use the Kilpisjärvi data from previous examples to model species richness. First thing we need to do is set up the spatial structure. 
 
 ```{r data, results = FALSE, message = FALSE}
 # import the data
@@ -102,27 +102,16 @@ kjGeo <- st_as_sf(kjRaw,
                   crs = 4326)
 ```
 
+`INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data! There is nothing of concern for us if we're modelling `species_rich` as our response.
 
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r naTest}
+# NAs per column
+t(kjRaw %>% summarise(across(everything(), ~ sum(is.na(.)))))
 ```
 
-## Including Plots
+### Modelling Setup
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+For any `INLA`-based model, we first need to set up our mesh in `fmesher`. Options are endless, but it works well with `sf` objects and coordinates. In general, the more mesh nodes there are, the longer the model will take to run.
 
 ## Acknowledgements
 
