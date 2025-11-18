@@ -7,9 +7,9 @@ bibliography: refINLA.bib
 csl: nature.csl
 ---
 
-### Introduction
+# Introduction
 
-At this point, we have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**--they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then these methods are perfect for you!
+At this point, we have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**: they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then this might be perfect for you!
 
 ## Definitions
 
@@ -40,4 +40,8 @@ plot(pressure)
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
-### References
+## Acknowledgements
+
+Many of the links, references, and materials came from [Ben Swallow](https://ben-swallow-research.github.io/) during his supervison of my MSc dissertation. The theory and background relied on older slides from [Janine Illian](https://www.gla.ac.uk/schools/mathematicsstatistics/staff/janineillian/). Newer `inlabru` materials came from Finn Lindgren's [2025 `inlabru` course](https://inlabru-org.github.io/inlabruCourseMay2025/index.html).
+
+# References
