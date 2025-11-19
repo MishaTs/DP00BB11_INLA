@@ -105,8 +105,9 @@ kjGeo <- st_as_sf(kjRaw,
 `INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data! There is nothing of concern for us if we're modelling `species_rich` as our response.
 
 ```{r naTest}
-# NAs per column
-t(kjRaw %>% summarise(across(everything(), ~ sum(is.na(.)))))
+# NAs per column for the three columns of interest
+t(kjRaw %>% select(c("Lat", "Lon", "species_rich")) %>% 
+    summarise(across(everything(), ~ sum(is.na(.)))))
 ```
 
 ### Modelling Setup
