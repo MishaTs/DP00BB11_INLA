@@ -109,10 +109,42 @@ kjGeo <- st_as_sf(kjRaw,
 t(kjRaw %>% select(c("Lat", "Lon", "species_rich")) %>% 
     summarise(across(everything(), ~ sum(is.na(.)))))
 ```
-
 ### Modelling Setup
 
-For any `INLA`-based model, we first need to set up our mesh in `fmesher`. Options are endless, but it works well with `sf` objects and coordinates. In general, the more mesh nodes there are, the longer the model will take to run.
+SPDE models always start with the mesh, implemented using `fmesher`. At its simplest, we can do this automatically with `sf` objects or raw coordinates. In general, the more mesh nodes there are, the longer the model will take to run. If you want to test lots of models without worrying too much about *how well the estimation works*, coarse meshes are best.
+
+`fmesher` started as a function within INLA, so older code uses slightly different syntax (more information on converting via the [vignette](https://inlabru-org.github.io/fmesher/articles/inla_conversion.html)). These days `fmesher` can be used to specify spatial fields for other packages like `tinyVAST` and `sdmTMB` too; other packages like `gllvm` and `Hmsc` are working on compatability.
+
+We demonstrate a basic, default mesh using the base method. Some handy alternatives (all with the `loc =` argument):
+
+* `loc = ` can generate spherical meshes for global models if given 3D coordinates. 2D coordinates are the norm for `sf` objects.
+* `fm_nonconvex_hull()` works with non-convex spatial areas that defaults handle poorly.
+* `fm_hexagon_lattice()` is Finn's recommendation for a baseline mesh but has been (in his words) ignored by most modellers because it wasn't the default nor in the vignettes until this year. It represents a spatially uniform sampling protocol.
+
+```{r mesh, message = FALSE, fig.width = 10, fig.height = 8}
+meshBasic <- fm_mesh_2d_inla(
+  # you can also set this with a boundary shapefile (in sf format) using
+  #boundary = kjBoundary
+  # location or boundary, you can only pick one!
+  loc = kjGeo$geometry, 
+  # set map units inside and outside 
+  max.edge = c(0.9, # smaller inner units give a more detailed mesh within the sampling area
+               1), # smaller outer units give more detailed spatial estimates of boundary effects
+  # you can also set this to a single number like if you aren't worried about edge effects, for example:
+  #max.edge = 1
+  # cutoff is equivalent to the min edge
+  #cutoff = 2, 
+  crs = fm_crs(kjGeo)
+)
+
+# plotting is easy; you should always visually confirm
+meshPlot <- ggplot() + 
+  geom_fm(data = meshBasic) + 
+  geom_sf(data = kjGeo, size = 0.5, colour = "red") + 
+  theme_bw()
+meshPlot
+```
+
 
 ## Acknowledgements
 
