@@ -39,10 +39,10 @@ If you plan to be a casual user at best, you can consider the basic SPDE field a
 
 As a general rule of thumb, INLA-SPDE models are more rigid, spatially explicit, and accessible than MCMC. They also run much faster. In exchange, they come with a few assumptions:
 
-* **Stationarity**: the underlying stochastic process is space-invariant (and time-invariant in spatiotemporal models). This would mean that your latent field should have a consistent mean and variance across the sampling domain. In practice, `INLA` has a default parameter `alpha = 2` that lets SPDEs accommodate non-stationarity.[@ingebrigtsen_spatial_2014; @gomez-rubio_bayesian_2020]
+* **Stationarity**: the underlying stochastic process is space-invariant (and time-invariant in spatiotemporal models). This would mean that your latent field should have a consistent mean and variance across the sampling domain. In practice, `INLA` has a default parameter `alpha = 2` that lets SPDEs accommodate some non-stationarity.[@ingebrigtsen_spatial_2014; @gomez-rubio_bayesian_2020]
 * **Isotropy**: covariance depends only on the distance between points (i.e., the spatial field is rotation-invariant). This assumption is quite strict, but some exceptions (e.g., diffusion and barrier models) are possible using supplemental packages like `INLAspacetime`. If you want to model impassable barriers (e.g., fences), see [this vignette](https://eliaskrainski.github.io/INLAspacetime/articles/web/barrierExample.html) for more information. There is debate on how much this impacts edge/boundary effects, but best practice is to define your study area to be a bit larger just in case. [@lindgren_bayesian_2015]
 
-These two major assumptions are largely theoretical and are often violated by real-world data and scientific publications. Just note them and move on if this happens to you.
+These two major assumptions are largely theoretical and are often violated by real-world data and scientific publications. In the worst case, just note them and move on. In the best case, find a way to sub-sample your data, choose a more suitable `INLA` formulation, or find a more flexible modelling package.
 
 Beyond those, simple models function similarly to GAMMs (generalised additive mixed models) and include those assumptions:
 
@@ -73,7 +73,7 @@ That's enough theory; let's apply this to real data. This section will walk thro
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-First, we'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` vignette](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install). These are **highly dependent on your operating system and ICT permissions on your computer** but ICT (or I) can help find an option that works. At my last check, the example below should work on a newer Windows laptop with no admin permissions.
+First, we'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` homepage](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install). These are **highly dependent on your operating system and ICT permissions on your computer**, but ICT (or I) can help find an option that works. At my last check, the example below should work on a newer Windows laptop with no admin permissions.
 
 ```{r imports, eval = FALSE}
 # install INLA following the online instructions
