@@ -104,7 +104,7 @@ library(sf)
 
 ### Data Checks
 
-We'll use the Kilpisjärvi data from previous examples to model species richness. `INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data! There is nothing of concern for us if we're modelling `species_rich` as our response.
+We'll use the Kilpisjärvi data from previous examples to model species richness. `INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data. There is nothing of concern for us if we're modelling `species_rich` as our response.
 
 ```{r naTest, , message = FALSE}
 # import the data
@@ -137,7 +137,7 @@ I'll show a basic, default mesh using the base method. Some handy alternatives (
 * `fm_nonconvex_hull()` works with non-convex spatial areas that defaults handle poorly.
 * `fm_hexagon_lattice()` is Finn's recommendation for a baseline mesh but has been (in his words) ignored by most modellers because it wasn't the default nor in the vignettes until this year. It represents a spatially uniform sampling protocol.
 
-```{r mesh, message = FALSE, fig.width = 10, fig.height = 8}
+```{r mesh, message = FALSE, fig.width = 10, fig.height = 8, fig.align = "center"}
 meshBasic <- fm_mesh_2d_inla(
   # you can also set this with a boundary shapefile (in sf format) using
   #boundary = kjBoundary
@@ -178,7 +178,7 @@ And that's it! You can import data and set up a simple model with just 10 lines 
 
 We're working with species richness, which is positive discrete (i.e., no values below zero and no decimal values). It varies between `r min(kjRaw$species_rich)` and `r max(kjRaw$species_rich)`.
 
-```{r richPlot, message = FALSE}
+```{r richPlot, message = FALSE, fig.align = "center", echo = FALSE}
 richPlot <- ggplot(kjRaw, aes(x = species_rich)) + geom_histogram() + theme_bw() + 
   xlab("Species richness") + ylab("Count")
 richPlot
@@ -186,18 +186,18 @@ richPlot
 
 INLA supports an dizzying amount of distribution families that aren't clearly [documented](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/). For this, [Gaussians](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/gaussian.pdf) are a decent baseline choice but cannot be constrained to positive values only. [Poisson](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/poisson.pdf) is a good alternative (especially [non-zero Poisson](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/nzpoisson.pdf)) though dispersion is always a concern. [Negative binomial distributions](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/nbinomial.pdf) can present another good option. 
 
-In this case, I use the [Tweedie distribution](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/tweedie.pdf)--including Poisson-Gamma, Gaussian, gamma, and some other distributions, Tweedie particularly suits positive continuous and right-skewed distributions that may include zero inflation.[@gilchrist_use_2000] It comes with two hyperparameters: $\theta_1$, power, and $\theta_2$, log(dispersion). Power $p$ is actually $1 + \frac{\exp(\theta_1)}{1+\exp(\theta_1)}$. So when $p = 2$, we get a [quasi-Poisson](https://bookdown.org/mike/data_analysis/sec-quasi-poisson-regression.html) (Poisson with some dispersion); $p = 1$ gives us a [gamma distribution](https://library.virginia.edu/data/articles/getting-started-with-gamma-regression).
+In this case, I use the [Tweedie distribution](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/tweedie.pdf)--which includes Poisson-Gamma, Gaussian, gamma, and some other distributions, Tweedie particularly suits positive continuous and right-skewed distributions that may include zero inflation.[@gilchrist_use_2000] It comes with two hyperparameters: $\theta_1$, power, and $\theta_2$, log(dispersion). Power $p$ is actually $1 + \frac{\exp(\theta_1)}{1+\exp(\theta_1)}$. So when $p = 2$, we get a [quasi-Poisson](https://bookdown.org/mike/data_analysis/sec-quasi-poisson-regression.html) (Poisson with some dispersion); $p = 1$ gives us a [gamma distribution](https://library.virginia.edu/data/articles/getting-started-with-gamma-regression).
 
-In short, the Tweedie is flexible and relatively easy to interpret. It takes a log-link in INLA, so make sure to exponentiate your coefficients on the response scale!
+In short, the Tweedie is flexible and relatively easy to interpret. It takes a log-link in INLA, so make sure to exponentiate your coefficients on the response scale.
 
 `inlabru` syntax is relatively easy, and we'll ignore the complex options for now. I personally like the `bru_obs()` intermediate function, but it's optional in the newer versions. The `options = list()` argument for `bru()` has too many options to list out, but some that I've used before (and liked) include:
 
 * `lincomb`: maybe you're interested in a linear combination of covariates (e.g., grazing by two different species) which you can add
 * `quantiles`: are you unsatisfied with the median or want easier access to credible levels (e.g., 95% CI)?
 * `control.compute`: what metrics do you want for model evaluation? CPO, WAIC, DIC, and marginals predictors can all be selected
-* `control.predictor`: what do you want for model prediction, if any?
+* `control.predictor`: what do you want for model prediction, if anything?
 * `control.inla`: manually choose the fitting strategy (e.g., empirical Bayes)
-* `bru_verbose`: set to `r TRUE` for basic messages of the fit; set to 2 or 3 for even more details
+* `bru_verbose`: set to TRUE for basic messages about the fit; set to 2 or 3 for even more details
 
 First, I show a basic non-spatial GLM with `inlabru` syntax. Compare with `bayesreg` or any other regression method of your choice to see how results compare.
 
@@ -214,7 +214,7 @@ fitGLM <- bru(formulaGLM, kjGeo, family = "tweedie"
 
 You can also fit spatial GLMMs with `inlabru` by adding `field(site, model = "iid")` to the formula. There are no grouped survey design variables, so we don't bother running it.
 
-Spatial models aren't much more complex to build and run than a basic GLM. The `field` argument is the engine of any complex models in `inlabru`. Matérn spatial fields with time lags and mixed effects (including hierarchical designs) are among the "simpler" designs that you can include. There's also no limit on the number of effects; you can have survey random effects and a spatial random field in the same model! Just make sure to name each effect differently (e.g., `field1()`, `field2()`, `field3()`).
+Spatial models aren't much more complex to build and run than a basic GLM. The `field` argument is the engine of any complex models in `inlabru`. Matérn spatial fields with time lags and mixed effects (including hierarchical designs) are among the "simpler" designs that you can include. There's also no limit on the number of effects; you can have survey random effects and a spatial random field in the same model. Just make sure to name each effect differently (e.g., `field1()`, `field2()`, `field3()`).
 
 ```{r spatModel}
 # write the formula
