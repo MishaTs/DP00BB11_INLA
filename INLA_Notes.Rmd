@@ -49,10 +49,21 @@ Beyond those, simple models function similarly to GAMMs (generalised additive mi
 * **Link-scale linearity**: with the exception of more complicated hierarchical models, all your covariates will be in a single equation added together. Is this reasonable?
 * **Separability (e.g., collinearity)**: *for inference only*, you should avoid adding multiple terms that correlate with each other. In practice, you'll end up with untrustworthy estimates for any term that has this problem.
 
+### Bayesian Statistics: An Aside
+
+Unlike many traditional regression models, `INLA` is Bayesian, which means that you can set priors at almost any step in the modelling. See the first chapter of [this handy online book](https://becarioprecario.bitbucket.io/inla-gitbook/ch-intro.html#bayesian-inference) if you want more equations (like Bayes Theorem) and theoretical explanations. As a cursory review, Bayesian models are made up of **priors**, **likelihoods**, and **posteriors**:
+
+* **Priors** are initial beliefs about the stochastic processes (and can include specialised geographical knowledge gained from the field).
+* **Likelihoods** are the output of the data-based evaluation. Frequentist regression results (i.e., `glm`, `nlme`, `lme4`) *are* the likelihood.
+* **Posteriors** combine the prior and likelihood to give what we think is true reality.
+
+A good rule of thumb is to **always prefer default priors unless you have a reason not to**. For advanced model tweaks though, it can get quite interesting. We will go through some prior checks at the end of our worked example to demonstrate how you can interpret if, for example, you're using the correct distribution family (e.g., Gaussian, Poisson). INLA priors often work through **hyperparameters**: e.g., $\mu$ and $\sigma$ in Gaussian distribution.
+
+The most likely priors you might use for bigger datasets are **penalised complexity priors** which tell the posterior to prefer simpler models whenever possible. In practice, these help models fit faster (even though `INLA` is already fast), and you can interpret the posterior more easily.
 
 # Worked Example
 
-That's enough theory; let's apply this to an actual example. This section will walk through an INLA-SPDE modelling pipeline from package installation to model diagnostics and comparison.
+That's enough theory; let's apply this to real data. This section will walk through an INLA-SPDE modelling pipeline from package installation to model diagnostics and comparison.
 
 ### Package Installation
 
@@ -60,7 +71,7 @@ That's enough theory; let's apply this to an actual example. This section will w
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-First, we'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` vignette](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install).
+First, we'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` vignette](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install). These are **highly dependent on your operating system and ICT permissions on your computer** but ICT (or I) can help find an option that works. At my last check, the example below should work on a newer Windows laptop with no admin permissions.
 
 ```{r imports, eval = FALSE}
 # install INLA following the online instructions
@@ -89,29 +100,32 @@ library(fmesher)
 library(sf)
 ```
 
-### Data Setup
+### Data Checks
 
-We'll use the Kilpisjärvi data from previous examples to model species richness. First thing we need to do is set up the spatial structure. 
+We'll use the Kilpisjärvi data from previous examples to model species richness. `INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data! There is nothing of concern for us if we're modelling `species_rich` as our response.
 
-```{r data, results = FALSE, message = FALSE}
+```{r naTest, , message = FALSE}
 # import the data
 kjRaw <- read_csv("Kilpisjarvi.csv")
+
+# NAs per column for the three columns of interest
+t(kjRaw %>% select(c("Lat", "Lon", "species_rich")) %>% 
+    summarise(across(everything(), ~ sum(is.na(.)))))
+```
+### Spatial Setup
+
+You can skip this if you're fitting a non-spatial model (e.g., GLM or GLMM), but if you're stopping there then why use `INLA` in the first place?
+
+First thing we need to do is set up the spatial structure in the data itself, because working with `sf` objects makes everything easier.
+
+```{r data, results = FALSE}
 # make spatial
 kjGeo <- st_as_sf(kjRaw, 
                   coords = c("Lon", "Lat"),
                   crs = 4326)
 ```
 
-`INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data! There is nothing of concern for us if we're modelling `species_rich` as our response.
-
-```{r naTest}
-# NAs per column for the three columns of interest
-t(kjRaw %>% select(c("Lat", "Lon", "species_rich")) %>% 
-    summarise(across(everything(), ~ sum(is.na(.)))))
-```
-### Modelling Setup
-
-SPDE models always start with the mesh, implemented using `fmesher`. At its simplest, we can do this automatically with `sf` objects or raw coordinates. In general, the more mesh nodes there are, the longer the model will take to run. If you want to test lots of models without worrying too much about *how well the estimation works*, coarse meshes are best.
+SPDE models start with the mesh, implemented using `fmesher`. At its simplest, we can do this automatically with `sf` objects or raw coordinates. In general, the more mesh nodes there are, the longer the model will take to run. If you want to test lots of models without worrying too much about *how well the estimation works*, coarse meshes are best. 
 
 `fmesher` started as a function within INLA, so older code uses slightly different syntax (more information on converting via the [vignette](https://inlabru-org.github.io/fmesher/articles/inla_conversion.html)). These days `fmesher` can be used to specify spatial fields for other packages like `tinyVAST` and `sdmTMB` too; other packages like `gllvm` and `Hmsc` are working on compatability.
 
@@ -145,6 +159,17 @@ meshPlot <- ggplot() +
 meshPlot
 ```
 
+Next, we make the SPDE object for spatial models. We again use the base function, but `inla.spde2.pcmatern` is a nice alternative when you're working with big data: you can set **penalised complexity priors** to avoid bloat in the spatial structure. Our data is quite compact already, so this isn't necessary here.
+
+```{r spdeSetup, results = FALSE}
+# Making SPDE
+# Quantify distance between points and define Matern correlation on the mesh
+# allows for penalised complexity priors
+spde2D <- inla.spde2.matern(mesh = meshBasic)#, 
+#prior.range = c(10, 0.5), 
+#prior.sigma = c(.5, .5))#,
+#alpha = 2) 
+```
 
 ## Acknowledgements
 
