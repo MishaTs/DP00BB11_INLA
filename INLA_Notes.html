@@ -905,6 +905,10 @@ of interest.</p>
 ## [55] &quot;bru_timings&quot;                 &quot;bru_info&quot;</code></pre>
 <div id="interpretation" class="section level3">
 <h3>Interpretation</h3>
+<p>The following section contains in-line code evaluation. If you’re
+confused about where a number came from, consult the <code>.rmd</code>
+file in <a href="https://github.com/MishaTs/DP00BB11_INLA">the GitHub
+repo</a>. This section starts on line 327.</p>
 <p>Start with the summary function. It gives a good overview.</p>
 <pre class="r"><code>summary(fitGeo)</code></pre>
 <pre><code>## inlabru version: 2.13.0
@@ -926,7 +930,7 @@ of interest.</p>
 ##     Additive/Linear: TRUE/TRUE
 ##     Used components: effects[Intercept, cwm_max_height, cwm_LDMC, FDD_T3, GDD3_T3, median_moist, field], latent[]
 ## Time used:
-##     Pre = 0.848, Running = 0.474, Post = 0.149, Total = 1.47 
+##     Pre = 0.83, Running = 0.483, Post = 0.156, Total = 1.47 
 ## Fixed effects:
 ##                  mean    sd 0.025quant 0.5quant 0.975quant   mode kld
 ## Intercept       2.701 0.055      2.585    2.704      2.801  2.712   0
@@ -943,42 +947,98 @@ of interest.</p>
 ## Model hyperparameters:
 ##                                    mean    sd 0.025quant 0.5quant 0.975quant
 ## p parameter for Tweedie           1.423 0.023       1.38    1.423      1.469
-## Dispersion parameter for Tweedie  0.586 0.058       0.48    0.583      0.709
-## Theta1 for field                 -5.598 0.351      -6.28   -5.602     -4.895
-## Theta2 for field                  5.402 0.319       4.76    5.406      6.019
+## Dispersion parameter for Tweedie  0.585 0.058       0.48    0.582      0.708
+## Theta1 for field                 -5.598 0.349      -6.27   -5.604     -4.892
+## Theta2 for field                  5.402 0.319       4.76    5.408      6.013
 ##                                    mode
 ## p parameter for Tweedie           1.422
-## Dispersion parameter for Tweedie  0.577
-## Theta1 for field                 -5.620
-## Theta2 for field                  5.421
+## Dispersion parameter for Tweedie  0.576
+## Theta1 for field                 -5.631
+## Theta2 for field                  5.432
 ## 
-## Marginal log-Likelihood:  -1465.99 
+## Marginal log-Likelihood:  -1466.00 
 ##  is computed 
 ## Posterior summaries for the linear predictor and the fitted values are computed
 ## (Posterior marginals needs also &#39;control.compute=list(return.marginals.predictor=TRUE)&#39;)</code></pre>
+<p>In it is most of the non-spatial information we need. Contrary to
+what you might think, the only <em>truly spatial</em> part of our
+<code>inlabru</code> model is the random <code>field</code> itself.
+Everything else functions as a normal scalar via normal regression
+rules. We demonstrate how to interpret the Intercept and one
+coefficient:</p>
+<ul>
+<li><strong>Intercept</strong>: the typical site species richness when
+all covariates are at their mean values is 14.89 with a [13.27, 16.46]
+95% credible interval</li>
+<li><strong>FDD_T3</strong>: when all other covariates are at their mean
+values, an extra freezing degree day leads to 0.0027 lower species
+richness with a [0.0025, 0.0028] 95% credible interval</li>
+</ul>
+<p>The specific formula to convert a coefficient output to “real world”
+language is <code>exp(inlaCoefficient)/sd(originalColumn)</code>. For
+FDD_T3, this is
+<code>exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE)</code>.
+Rinse and repeat with the credible interval bounds that you’re
+interested in since they convert the same as coefficients. If you want
+to use the original values, you can say that a 1 standard deviation
+increase in FDDs leads to an <code>exp(inlaCoefficient)</code>, in this
+case 0.9, lower species richness. If you prefer social science language,
+then a 1 standard deviation increase in FDDs leads to a 0.1% decrease in
+species richness (just the actual model coefficient itself). Communicate
+in the way that feels best to you.</p>
+<p>Remember, we are exponentiating because the Tweedie distribution
+takes a log link function in <code>INLA</code>. You can skip this step
+if using a distribution with a linear link, like Gaussian. If you’re
+working with logistic link functions, I can only wish you good luck.
+Things also change a bit if you rescale or log your response variable
+(which can be done), but the general interpretative rules stay the same:
+consult these handy StackExchange posts for <a href="https://stats.stackexchange.com/questions/603213/interpretation-of-rescaled-coefficients-in-ols">quantiative</a>
+and <a href="https://stats.stackexchange.com/questions/407822/interpretation-of-standardized-z-score-rescaled-linear-model-coefficients">language</a>
+tips on interpreting models where both response variables and covariates
+are rescaled.</p>
+<p>There is no “significance” in Bayesian statistics in the same way as
+classical methods, but it’s quite common to say that a 95% credible
+interval excluding zero shows meaningful evidence of an effect. This is
+why I suggested (and provided code for) different quantiles in the
+<code>bru</code> call: you can also do this at the 90% credible level,
+for example.</p>
+<p>Dealing with the spatial field is a bit more complicated.</p>
+<p>Bayes factor is another “robust” measure for inference which is the
+ratio of the marginal likelihoods (<code>mlik</code>) of two models.
+From the model object, you want the <a href="https://groups.google.com/g/r-inla-discussion-group/c/1Zs00DttjEE">“log
+marginal-likelihood (integration)”</a>. So if you want to measure the
+relative importance of a single term, you must fit models with and
+without the term of interest. <a href="https://en.wikipedia.org/wiki/Bayes_factor#Interpretation">Wikipedia
+explains</a> how to interpret this well with good scientific
+references.</p>
+<p>Hyperparameters, too, explain the model suitability and
+distributional behaviour.</p>
 </div>
 <div id="diagnostics" class="section level3">
 <h3>Diagnostics</h3>
 <p>“Since all models are wrong the scientist must be alert to what is
 importantly wrong.” - George Box<span class="citation"><sup>8</sup></span></p>
 <p>Stationarity (weak) and isotropy (strong) assumptions are best
-tackled theoretically by the less theoretically-inclined. Are we missing
-any linear fixed effects or spatial variance terms that would affect the
-spatial patterns across the pixels/points (i.e., stationarity) or across
-the whole study area in larger space (i.e. isotropy)? Maybe georichness
-is a strong explainer of species richness in the Kilpisjärvi area that
-we do not account for via basic topography? Ordination methods (e.g.,
-<code>gllvm</code>) can offer a nice way to examine the unmodelled
-structures.</p>
-<p>Predictive scoring is a complex topic if you’re interested
-prediction, and <code>inlabru</code> has a nice theoretical description
-and links to another package, <code>scoringRules</code> that can provide
-more help if you consult <a href="https://inlabru-org.github.io/inlabru/articles/prediction_scores.html">the
-official article</a>. These generally require some testing set (data
-that we do not use to fit the model but generated in the same way) or at
-least a theoretically generated comparison dataset. Both of these are
-too much work for this exercise. In my experience, CPRS is often treated
-as a “gold standard” for predictive metrics.</p>
+tackled theoretically by most users. Are we missing any linear fixed
+effects or spatial variance terms that would affect the spatial patterns
+across the pixels/points (i.e., stationarity) or across the whole study
+area in larger space (i.e. isotropy)? For example, maybe georichness is
+a strong spatial explainer of species richness in the Kilpisjärvi area
+that we do not account for via basic topography. Ordination methods
+(e.g., <code>gllvm</code>) can offer a nice way to examine the
+unmodelled structures.</p>
+<p>Predictive scoring, if that’s your focus, is a complex topic, and
+<code>inlabru</code> has a nice theoretical description and links to
+another package, <code>scoringRules</code> that can provide more help if
+you consult <a href="https://inlabru-org.github.io/inlabru/articles/prediction_scores.html">the
+official article</a>. Another older resource is <a href="https://becarioprecario.bitbucket.io/inla-gitbook/ch-INLA.html#sec:modelassess">the
+INLA book</a>. These generally require some testing set (data that we do
+not use to fit the model but generated in the same way) or at least a
+theoretically generated comparison dataset. Both of these are too much
+work for this exercise. In my experience, CPRS is often treated as a
+“gold standard” for predictive metrics. Sometimes, these are used as
+model evaluation for inference as well due to their good theoretical and
+practical implementation.</p>
 <p>Easier options to look at are CPO, WAIC, and DIC although information
 criteria can have issues depending on model components (e.g., <a href="https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ">point
 process observation model likelihoods</a>). These are not computed by

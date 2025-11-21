@@ -326,11 +326,45 @@ names(fitGeo)
 
 ### Interpretation
 
+The following section contains in-line code evaluation. If you're confused about where a number came from, consult the `.rmd` file in [the GitHub repo](https://github.com/MishaTs/DP00BB11_INLA). This section starts on line 327.
+
 Start with the summary function. It gives a good overview.
 
 ```{r sum}
 summary(fitGeo)
 ```
+
+In it is most of the non-spatial information we need. Contrary to what you might think, the only *truly spatial* part of our `inlabru` model is the random `field` itself. Everything else functions as a normal scalar via normal regression rules. We demonstrate how to interpret the Intercept and one coefficient:
+
+* **Intercept**: the typical site species richness when all covariates are at their mean values is `r round(exp(fitGeo$summary.fixed$mean[1]), 2)` with a [`r round(exp(fitGeo$summary.fixed[1,3]), 2)`, `r round(exp(fitGeo$summary.fixed[1,5]), 2)`] 95% credible interval
+* **FDD_T3**: when all other covariates are at their mean values, an extra freezing degree day leads to `r signif(exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)` `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "higher", "lower")` species richness with a [`r signif(exp(fitGeo$summary.fixed[2,3])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`, `r signif(exp(fitGeo$summary.fixed[2,5])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`] 95% credible interval
+
+The specific formula to convert a coefficient output to "real world" language is `exp(inlaCoefficient)/sd(originalColumn)`. For FDD_T3, this is `exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE)`. Rinse and repeat with the credible interval bounds that you're interested in since they convert the same as coefficients. If you want to use the original values, you can say that a 1 standard deviation increase in FDDs leads to an `exp(inlaCoefficient)`, in this case `r signif(exp(fitGeo$summary.fixed$mean[2]), 2)`, `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "higher", "lower")` species richness. If you prefer social science language, then a 1 standard deviation increase in FDDs leads to a `r abs(signif(fitGeo$summary.fixed$mean[2], 2))`% `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "increase", "decrease")` in species richness (just the actual model coefficient itself). Communicate in the way that feels best to you.
+
+Remember, we are exponentiating because the Tweedie distribution takes a log link function in `INLA`. You can skip this step if using a distribution with a linear link, like Gaussian. If you're working with logistic link functions, I can only wish you good luck. Things also change a bit if you rescale or log your response variable (which can be done), but the general interpretative rules stay the same: consult these handy StackExchange posts for [quantiative](https://stats.stackexchange.com/questions/603213/interpretation-of-rescaled-coefficients-in-ols) and [language](https://stats.stackexchange.com/questions/407822/interpretation-of-standardized-z-score-rescaled-linear-model-coefficients) tips on interpreting models where both response variables and covariates are rescaled.
+
+There is no "significance" in Bayesian statistics in the same way as classical methods, but it's quite common to say that a 95% credible interval excluding zero shows meaningful evidence of an effect. This is why I suggested (and provided code for) different quantiles in the `bru` call: you can also do this at the 90% credible level, for example.
+
+
+
+
+
+
+Dealing with the spatial field is a bit more complicated.
+
+
+
+
+Bayes factor is another "robust" measure for inference which is the ratio of the marginal likelihoods (`mlik`) of two models. From the model object, you want the ["log marginal-likelihood (integration)"](https://groups.google.com/g/r-inla-discussion-group/c/1Zs00DttjEE). So if you want to measure the relative importance of a single term, you must fit models with and without the term of interest. [Wikipedia explains](https://en.wikipedia.org/wiki/Bayes_factor#Interpretation) how to interpret this well with good scientific references.
+
+
+
+
+
+Hyperparameters, too, explain the model suitability and distributional behaviour.
+
+
+
 
 
 
@@ -338,9 +372,9 @@ summary(fitGeo)
 
 "Since all models are wrong the scientist must be alert to what is importantly wrong." - George Box[@box_science_1976]
 
-Stationarity (weak) and isotropy (strong) assumptions are best tackled theoretically by the less theoretically-inclined. Are we missing any linear fixed effects or spatial variance terms that would affect the spatial patterns across the pixels/points (i.e., stationarity) or across the whole study area in larger space (i.e. isotropy)? Maybe georichness is a strong explainer of species richness in the Kilpisjärvi area that we do not account for via basic topography? Ordination methods (e.g., `gllvm`) can offer a nice way to examine the unmodelled structures.
+Stationarity (weak) and isotropy (strong) assumptions are best tackled theoretically by most users. Are we missing any linear fixed effects or spatial variance terms that would affect the spatial patterns across the pixels/points (i.e., stationarity) or across the whole study area in larger space (i.e. isotropy)? For example, maybe georichness is a strong spatial explainer of species richness in the Kilpisjärvi area that we do not account for via basic topography. Ordination methods (e.g., `gllvm`) can offer a nice way to examine the unmodelled structures.
 
-Predictive scoring is a complex topic if you're interested prediction, and `inlabru` has a nice theoretical description and links to another package, `scoringRules` that can provide more help if you consult [the official article](https://inlabru-org.github.io/inlabru/articles/prediction_scores.html). These generally require some testing set (data that we do not use to fit the model but generated in the same way) or at least a theoretically generated comparison dataset. Both of these are too much work for this exercise. In my experience, CPRS is often treated as a "gold standard" for predictive metrics.
+Predictive scoring, if that's your focus, is a complex topic, and `inlabru` has a nice theoretical description and links to another package, `scoringRules` that can provide more help if you consult [the official article](https://inlabru-org.github.io/inlabru/articles/prediction_scores.html). Another older resource is [the INLA book](https://becarioprecario.bitbucket.io/inla-gitbook/ch-INLA.html#sec:modelassess). These generally require some testing set (data that we do not use to fit the model but generated in the same way) or at least a theoretically generated comparison dataset. Both of these are too much work for this exercise. In my experience, CPRS is often treated as a "gold standard" for predictive metrics. Sometimes, these are used as model evaluation for inference as well due to their good theoretical and practical implementation.
 
 Easier options to look at are CPO, WAIC, and DIC although information criteria can have issues depending on model components (e.g., [point process observation model likelihoods](https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ)). These are not computed by default and must be selected using `control.compute`, which we did not do.
 
