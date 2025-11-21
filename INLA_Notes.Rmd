@@ -318,13 +318,33 @@ Broadly, `INLA` models have two ways to look at output:
 * the information contained directly in the model object like residuals (and other stuff added using `control.compute` and `control.predictor`)
 * a newer `predict` function that works only with `inlabru` and not legacy `INLA` models
 
-Both are useful and your focus will depend on the research question (i.e., prediction or inference).
+Both are useful and your focus will depend on the research question (i.e., prediction or inference). The model object itself is quite big, and I won't even pretend to give a deep overview of its contents. These can be used for both interpretation and diagnostics depending on what's of interest.
+
+```{r names}
+names(fitGeo)
+```
 
 ### Interpretation
+
+Start with the summary function. It gives a good overview.
+
+```{r sum}
+summary(fitGeo)
+```
+
+
 
 ### Diagnostics
 
 "Since all models are wrong the scientist must be alert to what is importantly wrong." - George Box[@box_science_1976]
+
+Stationarity (weak) and isotropy (strong) assumptions are best tackled theoretically by the less theoretically-inclined. Are we missing any linear fixed effects or spatial variance terms that would affect the spatial patterns across the pixels/points (i.e., stationarity) or across the whole study area in larger space (i.e. isotropy)? Maybe georichness is a strong explainer of species richness in the Kilpisjärvi area that we do not account for via basic topography? Ordination methods (e.g., `gllvm`) can offer a nice way to examine the unmodelled structures.
+
+Predictive scoring is a complex topic if you're interested prediction, and `inlabru` has a nice theoretical description and links to another package, `scoringRules` that can provide more help if you consult [the official article](https://inlabru-org.github.io/inlabru/articles/prediction_scores.html). These generally require some testing set (data that we do not use to fit the model but generated in the same way) or at least a theoretically generated comparison dataset. Both of these are too much work for this exercise. In my experience, CPRS is often treated as a "gold standard" for predictive metrics.
+
+Easier options to look at are CPO, WAIC, and DIC although information criteria can have issues depending on model components (e.g., [point process observation model likelihoods](https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ)). These are not computed by default and must be selected using `control.compute`, which we did not do.
+
+
 
 ## Wrap-Up
 
