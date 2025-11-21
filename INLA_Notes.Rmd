@@ -22,10 +22,10 @@ INLA is theoretically inspired by hierarchical and state space models and has bo
 
 With that sorted, spatial modelling has vocabulary corresponding to the geospatial language you know (and maybe love):
 
-* **(Poisson) point process**: a 2D distribution for **vector data** and the basis of many geospatial models.
-* **Cox process**: a doubly stochastic Poisson process for **vector data** where the intensity (i.e., expected number of points in a specific area) is itself stochastically random. INLA has special functions for Cox and LGCP (log-Gaussian Cox process) models.
-* **Gaussian random field**: a continuous 2D field for **raster data**. In essence, fields are the **latent process** from which you draw distributions (via sampling).
-* **Gauss-Markov random field (GMRF)**: a Gaussian random field for **raster data** where values structurally depend on some specific distance, time, etc (i.e., Markovian dependencies) but are otherwise independent.
+* **(Poisson) point process**: a 2D distribution for **point vector data** and the basis of many geospatial models.
+* **Cox process**: a doubly stochastic Poisson process for **point vector data** where the intensity (i.e., expected number of points in a specific area) is itself stochastically random. INLA has special functions for Cox and LGCP (log-Gaussian Cox process) models.
+* **Gaussian random field**: a continuous 2D field for **raster data** or **fully defined vector polygons**. In essence, fields are the **latent process** from which you draw point process distributions (via sampling).
+* **Gauss-Markov random field (GMRF)**: a Gaussian random field for **raster data**  or **fully defined vector polygons** where values structurally depend on some specific distance, time, etc (i.e., Markovian dependencies) but are otherwise independent.
 
 To reiterate, INLA's spatial models are directly based on GMRFs, and point process models are treated as drawn from some latent GMRF. This means that you can always include raster data (e.g., as covariates) directly in your models even if your response is vector data.
 
@@ -254,6 +254,48 @@ formulaGeo <- species_rich ~ Intercept(1) + cwm_max_height + cwm_LDMC +
 # run the model
 fitGeo <- bru(formulaGeo, kjGeo, family = "tweedie")
 ```
+
+`inlabru` *can* take more complex covariate structures, but the model specification bloats quickly and you'll need to use the `bru_obs()` (previously called `like()`) between specifying the formula and fitting the model in order to set a more detailed likelihood. A lot of this functionality is new (especially for `terra` objects), but there are a examples of how to include [spatial covariates in point process models](https://inlabru-org.github.io/inlabruCourseMay2025/articles/lgcp_2d_covars.html). Syntax is broadly the same. It's a bit daunting to convert to the spatial field model case for new users, so I give an example below. Posterior checks are left as an exercise to the reader because of syntax bloat.
+
+It's important to note that any *special* covariates you choose to include, `field` notation is essential. And below is an excellent demonstration that you can call then whatever you want. However, when using this syntax, the `model = ` argument tells `inlabru` how to evaluate the object (especially if using a different data source outside the main dataframe). A very poorly organised list of `model` options can be found in the depths of [original `INLA` documentation](https://inla.r-inla-download.org/r-inla.org/doc/latent/).
+
+```{r rastModel, eval = FALSE}
+# convert the mesh back to sf
+sfMesh <- st_as_sf(as.data.frame(meshBasic$loc), 
+                 coords = c("V1", "V2"),
+                 crs = 4326)
+# get bounding box
+meshBounds <- st_as_sfc(st_bbox(test), crs = 4326)
+# extract centroids for elevatr evaluation
+meshCentre <- st_centroid(sfMesh)
+
+library(elevatr)
+library(terra)
+# arbitrary call for demonstrative purposes
+elevRL <- get_elev_raster(locations = meshCentre, z = 5)
+# convert from RasterLayer to SpatRaster
+# elevatr's GitHub says they're changing output object type, so maybe unnecessary in the future
+elevT <- crop(terra::rast(elevRL, "epsg:4326"), 
+              # crop to bounding box for evaluation
+              meshBounds)
+# de-mean elevation to match vignette example
+elev <- elevT - mean(terra::values(elevT), na.rm = TRUE)
+
+# helper function because the example default method doesn't work well
+f.elev <- function(where) {
+  # Extract values from terra object using special inlabru function
+  v <- eval_spatial(elev, where, layer = names(elev))
+  v
+}
+
+# define the model
+formRast <- species_rich ~ elev(f.elev(.data.), model = "linear") +
+  field(geometry, model = matern2D) + Intercept(1)
+# run the model
+fitGeoRast <- bru(formRast, kjGeo, family = "tweedie")
+```
+
+
 
 ### Model Diagnostics
 

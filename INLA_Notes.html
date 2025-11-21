@@ -416,20 +416,23 @@ a normal model, this is what you are looking at.</li>
 the geospatial language you know (and maybe love):</p>
 <ul>
 <li><strong>(Poisson) point process</strong>: a 2D distribution for
-<strong>vector data</strong> and the basis of many geospatial
+<strong>point vector data</strong> and the basis of many geospatial
 models.</li>
 <li><strong>Cox process</strong>: a doubly stochastic Poisson process
-for <strong>vector data</strong> where the intensity (i.e., expected
-number of points in a specific area) is itself stochastically random.
-INLA has special functions for Cox and LGCP (log-Gaussian Cox process)
-models.</li>
+for <strong>point vector data</strong> where the intensity (i.e.,
+expected number of points in a specific area) is itself stochastically
+random. INLA has special functions for Cox and LGCP (log-Gaussian Cox
+process) models.</li>
 <li><strong>Gaussian random field</strong>: a continuous 2D field for
-<strong>raster data</strong>. In essence, fields are the <strong>latent
-process</strong> from which you draw distributions (via sampling).</li>
+<strong>raster data</strong> or <strong>fully defined vector
+polygons</strong>. In essence, fields are the <strong>latent
+process</strong> from which you draw point process distributions (via
+sampling).</li>
 <li><strong>Gauss-Markov random field (GMRF)</strong>: a Gaussian random
-field for <strong>raster data</strong> where values structurally depend
-on some specific distance, time, etc (i.e., Markovian dependencies) but
-are otherwise independent.</li>
+field for <strong>raster data</strong> or <strong>fully defined vector
+polygons</strong> where values structurally depend on some specific
+distance, time, etc (i.e., Markovian dependencies) but are otherwise
+independent.</li>
 </ul>
 <p>To reiterate, INLA’s spatial models are directly based on GMRFs, and
 point process models are treated as drawn from some latent GMRF. This
@@ -462,7 +465,7 @@ space-invariant (and time-invariant in spatiotemporal models). This
 would mean that your latent field should have a consistent mean and
 variance across the sampling domain. In practice, <code>INLA</code> has
 a default parameter <code>alpha = 2</code> that lets SPDEs accommodate
-non-stationarity.<span class="citation"><sup>4,5</sup></span></li>
+some non-stationarity.<span class="citation"><sup>4,5</sup></span></li>
 <li><strong>Isotropy</strong>: covariance depends only on the distance
 between points (i.e., the spatial field is rotation-invariant). This
 assumption is quite strict, but some exceptions (e.g., diffusion and
@@ -474,8 +477,10 @@ impacts edge/boundary effects, but best practice is to define your study
 area to be a bit larger just in case.<span class="citation"><sup>6</sup></span></li>
 </ul>
 <p>These two major assumptions are largely theoretical and are often
-violated by real-world data and scientific publications. Just note them
-and move on if this happens to you.</p>
+violated by real-world data and scientific publications. In the worst
+case, just note them and move on. In the best case, find a way to
+sub-sample your data, choose a more suitable <code>INLA</code>
+formulation, or find a more flexible modelling package.</p>
 <p>Beyond those, simple models function similarly to GAMMs (generalised
 additive mixed models) and include those assumptions:</p>
 <ul>
@@ -540,9 +545,9 @@ installation to model diagnostics and comparison.</p>
 example. <code>INLA</code>, however, is not on CRAN and must be
 downloaded manually. I provide one example, but other options are
 available at the <a href="https://inlabru-org.github.io/inlabru/index.html"><code>inlabru</code>
-vignette</a> and the <a href="https://www.r-inla.org/download-install"><code>INLA</code>
+homepage</a> and the <a href="https://www.r-inla.org/download-install"><code>INLA</code>
 website</a>. These are <strong>highly dependent on your operating system
-and ICT permissions on your computer</strong> but ICT (or I) can help
+and ICT permissions on your computer</strong>, but ICT (or I) can help
 find an option that works. At my last check, the example below should
 work on a newer Windows laptop with no admin permissions.</p>
 <pre class="r"><code># install INLA following the online instructions
@@ -765,6 +770,59 @@ formulaGeo &lt;- species_rich ~ Intercept(1) + cwm_max_height + cwm_LDMC +
 
 # run the model
 fitGeo &lt;- bru(formulaGeo, kjGeo, family = &quot;tweedie&quot;)</code></pre>
+<p><code>inlabru</code> <em>can</em> take more complex covariate
+structures, but the model specification bloats quickly and you’ll need
+to use the <code>bru_obs()</code> (previously called
+<code>like()</code>) between specifying the formula and fitting the
+model in order to set a more detailed likelihood. A lot of this
+functionality is new (especially for <code>terra</code> objects), but
+there are a examples of how to include <a href="https://inlabru-org.github.io/inlabruCourseMay2025/articles/lgcp_2d_covars.html">spatial
+covariates in point process models</a>. Syntax is broadly the same. It’s
+a bit daunting to convert to the spatial field model case for new users,
+so I give an example below. Posterior checks are left as an exercise to
+the reader because of syntax bloat.</p>
+<p>It’s important to note that any <em>special</em> covariates you
+choose to include, <code>field</code> notation is essential. And below
+is an excellent demonstration that you can call then whatever you want.
+However, when using this syntax, the <code>model =</code> argument tells
+<code>inlabru</code> how to evaluate the object (especially if using a
+different data source outside the main dataframe). A very poorly
+organised list of <code>model</code> options can be found in the depths
+of <a href="https://inla.r-inla-download.org/r-inla.org/doc/latent/">original
+<code>INLA</code> documentation</a>.</p>
+<pre class="r"><code># convert the mesh back to sf
+sfMesh &lt;- st_as_sf(as.data.frame(meshBasic$loc), 
+                 coords = c(&quot;V1&quot;, &quot;V2&quot;),
+                 crs = 4326)
+# get bounding box
+meshBounds &lt;- st_as_sfc(st_bbox(test), crs = 4326)
+# extract centroids for elevatr evaluation
+meshCentre &lt;- st_centroid(sfMesh)
+
+library(elevatr)
+library(terra)
+# arbitrary call for demonstrative purposes
+elevRL &lt;- get_elev_raster(locations = meshCentre, z = 5)
+# convert from RasterLayer to SpatRaster
+# elevatr&#39;s GitHub says they&#39;re changing output object type, so maybe unnecessary in the future
+elevT &lt;- crop(terra::rast(elevRL, &quot;epsg:4326&quot;), 
+              # crop to bounding box for evaluation
+              meshBounds)
+# de-mean elevation to match vignette example
+elev &lt;- elevT - mean(terra::values(elevT), na.rm = TRUE)
+
+# helper function because the example default method doesn&#39;t work well
+f.elev &lt;- function(where) {
+  # Extract values from terra object using special inlabru function
+  v &lt;- eval_spatial(elev, where, layer = names(elev))
+  v
+}
+
+# define the model
+formRast &lt;- species_rich ~ elev(f.elev(.data.), model = &quot;linear&quot;) +
+  field(geometry, model = matern2D) + Intercept(1)
+# run the model
+fitGeoRast &lt;- bru(formRast, kjGeo, family = &quot;tweedie&quot;)</code></pre>
 </div>
 <div id="model-diagnostics" class="section level3">
 <h3>Model Diagnostics</h3>
