@@ -256,7 +256,7 @@ fitGLM <- bru(formulaGLM, kjGeoNorm, family = "tweedie"
               )
 ```
 
-You can also fit GLMMs with `inlabru` by adding `field(site, model = "iid")` to the formula. Here, I don't bother running it given the lack of grouped survey design variables.
+You can also fit GLMMs with `inlabru` by adding `field(site, model = "iid")` to the formula. Here, I don't bother running it, but you can get out the site names (e.g., "AE09", "MAL") and try a fit if you'd like.
 
 Spatial models aren't that much more complex to build and run. The main difference is the `field` argument, which is the engine of all complex modelling in `inlabru`. Matérn spatial fields with time lags and mixed effects (including hierarchical designs) are among the "simpler" possible designs. There's also no limit on the number of effects, so you can have survey random effects and a spatial random field in the same model. Just make sure to name each effect differently (e.g., `field1()`, `field2()`, `field3()`). As a warning, models with too many fields (or improperly specified ones) may not converge and spit out a warning while failing. The more niche your structure, the more thinking and debugging is needed to ensure that things work OK.
 
@@ -283,7 +283,7 @@ sfMesh <- st_as_sf(as.data.frame(meshBasic$loc),
                  coords = c("V1", "V2"),
                  crs = 4326)
 # get bounding box
-meshBounds <- st_as_sfc(st_bbox(test), crs = 4326)
+meshBounds <- st_as_sfc(st_bbox(sfMesh), crs = 4326)
 # extract centroids for elevatr evaluation
 meshCentre <- st_centroid(sfMesh)
 
@@ -345,28 +345,68 @@ Remember, we are exponentiating because the Tweedie distribution takes a log lin
 
 There is no "significance" in Bayesian statistics in the same way as classical methods, but it's quite common to say that a 95% credible interval excluding zero shows meaningful evidence of an effect. This is why I suggested (and provided code for) different quantiles in the `bru` call: you can also do this at the 90% credible level, for example.
 
+Dealing with the spatial field is a bit more complicated and is best handled using the `predict` function. This is relatively new: example articles and vignettes are slowly showing the ways it can be used to replace traditional model outputs for more robust estimation. Predictions are especially useful at understanding the model's spatial behaviour.
 
+```{r bounds, echo = FALSE}
+# run this time because I didn't evaluate it previously
+sfMesh <- st_as_sf(as.data.frame(meshBasic$loc), 
+                 coords = c("V1", "V2"),
+                 crs = 4326)
 
+meshBounds <- st_as_sfc(st_bbox(sfMesh), crs = 4326)
+```
 
+```{r spatPlot, fig.align = "center", warning = FALSE}
+# create mesh only within the study area
+ppxl <- fm_pixels(meshBasic, mask = meshBounds)
 
+# run the built-in inlabru function to get predictions
+predField <- predict(
+  fitGeo, ppxl,
+  # look at the field only; add more covariates using typical "+" notation for full model predictions (including Intercept)
+  ~ field
+)
 
-Dealing with the spatial field is a bit more complicated.
+# modify data to get it to the response scale
+predFieldResponse <- predField %>% mutate(linkMean = exp(mean),
+                                          # not used, but you can also plot CIs
+                                          linkLower = exp(q0.025),
+                                          linkUpper = exp(q0.975))
 
+# plot
+spatPlot <- ggplot() +
+  # plotting as tile looks best
+  gg(predFieldResponse %>% relocate(linkMean), geom = "tile") +
+  scale_fill_viridis_c(begin = 0, end = 1) + 
+  theme_bw() + 
+  theme(axis.title = element_blank(),
+        panel.grid = element_line(colour = "#ABB0B8",
+                                  linetype = 2),
+        # put gridlines on top for better map
+        panel.ontop = TRUE,
+        panel.background = element_rect(color = NA, fill = NA)) + 
+  labs(fill = "Base spatial richness")
 
+spatPlot
+```
 
+We can also look at the scalar determinants of the spatial field behaviour, mainly the range and variance. These can be constrained with priors using `inla.spde2.pcmatern` if they look unsatisfactory (e.g., if you want a more constrained variance or broader range). The distributions' shapes look the same because of the underlying SPDE model architecture.
 
-Bayes factor is another "robust" measure for inference which is the ratio of the marginal likelihoods (`mlik`) of two models. From the model object, you want the ["log marginal-likelihood (integration)"](https://groups.google.com/g/r-inla-discussion-group/c/1Zs00DttjEE). So if you want to measure the relative importance of a single term, you must fit models with and without the term of interest. [Wikipedia explains](https://en.wikipedia.org/wiki/Bayes_factor#Interpretation) how to interpret this well with good scientific references.
+```{r rangePlot, fig.align = "center"}
+# use the spde.posterior to extract the full distribution of parameters of interest
+spde.range <- spde.posterior(fitGeo, "field", what = "range")
+# this is a specialised plot function that takes ggplot syntax
+range.plot <- plot(spde.range) + theme_bw()
+range.plot
+```
 
+```{r varPlot, fig.align = "center"}
+spde.logvar <- spde.posterior(fitGeo, "field", what = "variance")
+var.plot <- plot(spde.logvar) + theme_bw()
+var.plot
+```
 
-
-
-
-Hyperparameters, too, explain the model suitability and distributional behaviour.
-
-
-
-
-
+Bayes factor is a more generally "robust" measure for inference which is the ratio of the marginal likelihoods (`mlik`) of two models. From the model object, you want the ["log marginal-likelihood (integration)"](https://groups.google.com/g/r-inla-discussion-group/c/1Zs00DttjEE). So if you want to measure the relative importance of a single term, you must fit models with and without the term of interest. [Wikipedia explains](https://en.wikipedia.org/wiki/Bayes_factor#Interpretation) how to interpret this well with good scientific references. This can also compare models with and without spatial fields, for example, to see if the more complex structure is advisable.
 
 ### Diagnostics
 
@@ -376,9 +416,37 @@ Stationarity (weak) and isotropy (strong) assumptions are best tackled theoretic
 
 Predictive scoring, if that's your focus, is a complex topic, and `inlabru` has a nice theoretical description and links to another package, `scoringRules` that can provide more help if you consult [the official article](https://inlabru-org.github.io/inlabru/articles/prediction_scores.html). Another older resource is [the INLA book](https://becarioprecario.bitbucket.io/inla-gitbook/ch-INLA.html#sec:modelassess). These generally require some testing set (data that we do not use to fit the model but generated in the same way) or at least a theoretically generated comparison dataset. Both of these are too much work for this exercise. In my experience, CPRS is often treated as a "gold standard" for predictive metrics. Sometimes, these are used as model evaluation for inference as well due to their good theoretical and practical implementation.
 
-Easier options to look at are CPO, WAIC, and DIC although information criteria can have issues depending on model components (e.g., [point process observation model likelihoods](https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ)). These are not computed by default and must be selected using `control.compute`, which we did not do.
+Easier options to look at are CPO, WAIC, and DIC which are not computed by default and must be selected using `control.compute`, which we did not do. Residuals, too, must be enabled with `control.compute`; deviance residuals are the default and easy to get. In classical statistics, deviance residuals are a more general form of Pearson residuals and better account for distributions with mean-variance relationships.
 
+If you're working with point process models (i.e., modelling the specific spatial realisation of a process), then all of the default `INLA` options are not advised. [Information criteria](https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ) and [CPO](https://groups.google.com/g/r-inla-discussion-group/c/H99TgXGhI6M/m/cY5Zo9nCAgAJ) both show these issues, and a more targeted [residual analysis tutorial](https://inlabru-org.github.io/inlabru/articles/2d_lgcp_residuals_sf.html) can guide your evaluation.
 
+```{r rerun}
+# rerun the model to get everything for posterior checks
+fitGeoDiag <- bru_rerun(fitGeo,
+                        options = list(control.compute = list(waic = TRUE, 
+                                                              cpo = TRUE, 
+                                                              dic = TRUE, 
+                                                              return.marginals.predictor = TRUE,
+                                                              residuals = TRUE)))
+```
+
+For simple conclusions, scoring criteria analysis and residual examination works exactly the same as elsewhere. All of these correspond perfectly to the number of rows in the base data (i.e., 1 score or residual per observation), so it's easy to add it back to the original data and visualise as you see fit. 
+
+Plotting against richness, it looks like our spatial model should be refined. The gap around 0 isn't an issue and [an effect of the log transformation](https://groups.google.com/g/r-inla-discussion-group/c/572O2Nrev5Y/m/QaxKIiibFQAJ). But we both underestimate higher richness and overestimate lower richness. This isn't that shocking: a simple model will pull everything towards the mean value. We don't have any 0 values in the data; if we did, the strong negative residuals for low richness might motivate a zero-inflated distribution. Try out a residual vs fitted plot if you'd like to see how a cruder metric compares.
+
+```{r residInspect, fig.align = "center"}
+# rerun the model to get everything for posterior checks
+kjRes <- cbind(kjGeo, fitGeoDiag$residuals$deviance.residuals)
+
+ggplot(kjRes, aes(y = fitGeoDiag.residuals.deviance.residuals, x = species_rich)) +
+  geom_point() + 
+  theme_bw() + 
+  ylab("Deviance residuals") + xlab("Species richness")
+```
+
+Finally, it's always good practice to look at at least the distribution posterior hyperparameters: was Tweedie a good choice? First we see our dispersion parameter quite narrowly around its mean `r signif(fitGeo$summary.hyperpar$mean[2], 2)`. So Poisson would have  performed poorly. The power parameter behaves similarly around its mean `r signif(fitGeo$summary.hyperpar$mean[1], 2)`: the Tweedie ends up neither a full gamma or quasi-Poisson distribution, and simplifying it to one of its constituent distributions is probably a poor idea. So we do a decent job specifying an effective mean-variance relationship in our underling distribution. These numbers are all found in the first `summary()` call but can be directly accessed using `fitGeo$summary.hyperpar`. 
+
+These sorts of simpler 2D spatial field models can be interpreted the same as any other regression along with some notable hyperparameter checks. However, you can and should go as deep as you want. Sensitivity analysis is a relatively low-cost way of seeing how changing (hyper)parameters, formulations, and priors will affect results and lead to a more sensible model. If your dataset is small enough to allow lots of model exploration, definitely give it a try.
 
 ## Wrap-Up
 
@@ -392,6 +460,6 @@ If you'd rather get help from the source, `INLA` has [a great Q&A discussion for
 
 ## Acknowledgements
 
-Many of the links, references, and materials came from [Ben Swallow](https://ben-swallow-research.github.io/) during his supervison of my MSc dissertation. The theory and background relied on older slides from [Janine Illian](https://www.gla.ac.uk/schools/mathematicsstatistics/staff/janineillian/). Newer `inlabru` materials came from Finn Lindgren's [2025 `inlabru` course](https://inlabru-org.github.io/inlabruCourseMay2025/index.html).
+Many of the links, references, and materials came from [Ben Swallow](https://ben-swallow-research.github.io/) during his supervison of my MSc dissertation. The theory and background relied on older slides from a 2018 Spatial Processes course at St Andrews by [Janine Illian](https://www.gla.ac.uk/schools/mathematicsstatistics/staff/janineillian/). Newer `inlabru` materials came from Finn Lindgren's [2025 `inlabru` course](https://inlabru-org.github.io/inlabruCourseMay2025/index.html).
 
 # References
