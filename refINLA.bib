@@ -202,3 +202,22 @@ The book features fully reproducible examples of several disease and environment
 \_eprint: https://www.tandfonline.com/doi/pdf/10.1080/01621459.1976.10480949},
 	pages = {791--799},
 }
+
+@article{gaedke-merzhauser_parallelized_2022,
+	title = {Parallelized integrated nested {Laplace} approximations for fast {Bayesian} inference},
+	volume = {33},
+	issn = {1573-1375},
+	url = {https://doi.org/10.1007/s11222-022-10192-1},
+	doi = {10.1007/s11222-022-10192-1},
+	abstract = {There is a growing demand for performing larger-scale Bayesian inference tasks, arising from greater data availability and higher-dimensional model parameter spaces. In this work we present parallelization strategies for the methodology of integrated nested Laplace approximations (INLA), a popular framework for performing approximate Bayesian inference on the class of Latent Gaussian models. Our approach makes use of nested thread-level parallelism, a parallel line search procedure using robust regression in INLA’s optimization phase and the state-of-the-art sparse linear solver PARDISO. We leverage mutually independent function evaluations in the algorithm as well as advanced sparse linear algebra techniques. This way we can flexibly utilize the power of today’s multi-core architectures. We demonstrate the performance of our new parallelization scheme on a number of different real-world applications. The introduction of parallelism leads to speedups of a factor 10 and more for all larger models. Our work is already integrated in the current version of the open-source R-INLA package, making its improved performance conveniently available to all users.},
+	language = {en},
+	number = {1},
+	urldate = {2025-11-23},
+	journal = {Statistics and Computing},
+	author = {Gaedke-Merzhäuser, Lisa and van Niekerk, Janet and Schenk, Olaf and Rue, Håvard},
+	month = dec,
+	year = {2022},
+	keywords = {Bayesian inference, INLA, Mathematical software, Parallelism},
+	pages = {25},
+	file = {Full Text PDF:/Users/mishat/Zotero/storage/CDDVBVDT/Gaedke-Merzhäuser et al. - 2022 - Parallelized integrated nested Laplace approximations for fast Bayesian inference.pdf:application/pdf},
+}
