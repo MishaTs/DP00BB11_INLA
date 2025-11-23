@@ -9,16 +9,16 @@ csl: nature.csl
 
 # Background
 
-At this point, we have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**: they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then this might be perfect for you!
+At this point, you have gone through a number of methods for processing spatial data. Many of these were **non-parametric** or **semi-parametric**: this means that it can be difficult to link specific changes in a parameter or covariate to the intended result. In addition, many have been **spatially implicit**: they use coordinates as a proxy for spatial structure rather than modelling some *true space*. INLA can do all these too but is especially powerful for **parametric** and **spatially explicit** models. If you want to conduct inference on your data, then this might be perfect for you!
 
 ## Definitions
 
-Before going too deep into the package details, first we need to ensure we're familiar with the language of spatial statistics. The point is not to teach theory (which will mostly be omitted) but to ensure we have a *shared language* when questions arise. If you *are* interested in the theory, there are numerous good [resources](https://www.paulamoraga.com/book-spatial/) out there.[@blangiardo_spatial_2015; @moraga_geospatial_2019; @moraga_spatial_2023]
+Before going too deep into the package details, first I introduce the language of spatial statistics. The point is not to teach theory (which will mostly be omitted) but to ensure we have a *shared language* when questions arise. If you *are* interested in the theory, there are numerous good [resources](https://www.paulamoraga.com/book-spatial/) out there.[@blangiardo_spatial_2015; @moraga_geospatial_2019; @moraga_spatial_2023]
 
 INLA is theoretically inspired by hierarchical and state space models and has both **latent** and **observed** processes:
 
 * **latent process**: the *true* environmental reality (e.g., number of species in a sampling plot). Also called a **state process**.
-* **observation process**: what we see with our data (e.g., the number of species *recorded* in a sampling plot). With a normal model, this is what you are looking at.
+* **observation process**: what's measured in the data (e.g., the number of species *recorded* in a sampling plot). With a normal model, this is what you are looking at.
 
 With that sorted, spatial modelling has vocabulary corresponding to the geospatial language you know (and maybe love):
 
@@ -57,9 +57,9 @@ Unlike many traditional regression models, `INLA` is Bayesian, which means that 
 
 * **Priors** are initial beliefs about the stochastic processes (and can include specialised geographical knowledge gained from the field).
 * **Likelihoods** are the output of the data-based evaluation. Frequentist regression results (i.e., `glm`, `nlme`, `lme4`) *are* the likelihood.
-* **Posteriors** combine the prior and likelihood to give what we think is true reality.
+* **Posteriors** combine the prior and likelihood to give what would be true reality.
 
-A good rule of thumb is to **always prefer default priors unless you have a reason not to**. For advanced model tweaks though, it can get quite interesting. INLA priors often work through **hyperparameters**: e.g., $\mu$ and $\sigma$ in Gaussian distribution. We will show hyperparameter checks at the end of our worked example to demonstrate how you can interpret if, for example, you're using the correct distribution family (e.g., Gaussian, Poisson) based on posterior hyperparameters.
+A good rule of thumb is to **always prefer default priors unless you have a reason not to**. For advanced model tweaks though, it can get quite interesting. INLA priors often work through **hyperparameters**: e.g., $\mu$ and $\sigma$ in Gaussian distribution. I will show hyperparameter checks at the end of the example to demonstrate how you can interpret if you're using the correct distribution family (e.g., Gaussian, Poisson) based on posterior hyperparameters.
 
 The most likely priors you might use for bigger datasets are **penalised complexity priors** which tell the posterior to prefer simpler models whenever possible. In practice, these help models fit faster (even though `INLA` is already fast), and you can interpret the posterior more easily.
 
@@ -73,7 +73,7 @@ That's enough theory; let's apply this to real data. This section will walk thro
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-First, we'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` homepage](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install). These are **highly dependent on your operating system and ICT permissions on your computer**, but ICT (or I) can help find an option that works. At my last check, the example below should work on a newer Windows laptop with no admin permissions.
+First, you'll need `tidyverse`, `INLA`, `fmesher`, and `inlabru` packages for this example. `INLA`, however, is not on CRAN and must be downloaded manually. I provide one example, but other options are available at the [`inlabru` homepage](https://inlabru-org.github.io/inlabru/index.html) and the [`INLA` website](https://www.r-inla.org/download-install). These are **highly dependent on your operating system and ICT permissions on your computer**, but ICT (or I) can help find an option that works. At my last check, the example below should work on a newer Windows laptop with no admin permissions.
 
 ```{r imports, eval = FALSE}
 # install INLA following the online instructions
@@ -87,7 +87,7 @@ install.packages("inlabru")
 install.packages("fmesher")
 ```
 
-Now, we can get our working environment in order.
+Next is setting up the working environment.
 
 ```{r setup, results = FALSE, message = FALSE, warning = FALSE}
 # set working directory to the root folder of the project I'm working in 
@@ -104,20 +104,20 @@ library(sf)
 
 ### Data Checks
 
-We'll use the Kilpisjärvi data from previous examples. We have spatial coordinates in EUREF-FIN and WGS84, species richness, individual species' covers (as a %), trait information, and some climate variables. We'll use the WGS84 coordinates along with trait and climate covariates to model species richness.
+I use the same Kilpisjärvi data from previous examples. It has spatial coordinates in EUREF-FIN and WGS84, species richness, individual species' covers (as a %), trait information, and some climate variables. I'll use the WGS84 coordinates along with trait and climate covariates to model species richness.
 
 ```{r dataImport, message = FALSE}
 # import the data
 kjRaw <- read_csv("Kilpisjarvi.csv")
 ```
 
-There are `r dim(kjRaw)[1]` rows and `r dim(kjRaw)[2]` columns. You should always visualise and explore the data, but we'll assume that you've done this in the previous exercises up to now. `head()`, `View()`, and `summary()` are a good place to start. There are too many columns for the former two to render well in a notebook like this, but here's an illustrative summary of the latter.
+There are `r dim(kjRaw)[1]` rows and `r dim(kjRaw)[2]` columns. You should always visualise and explore the data, but I assume that you've done this in the previous exercises up to now. `head()`, `View()`, and `summary()` are a good place to start. There are too many columns for the former two to render well in a notebook like this, but here's an illustrative summary of the latter.
 
 ```{r summary}
 summary(kjRaw)
 ```
 
-`INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data. There is nothing of concern for us if we're modelling `species_rich` as our response.
+`INLA` can handle NAs in covariate data but not in the response, so make sure to check for messier data. There is nothing of concern for us if modelling `species_rich` as the response.
 
 ```{r naTest, message = FALSE}
 # handy shortcut to see NAs per column for the three specific columns of interest
@@ -129,7 +129,7 @@ t(kjRaw %>% select(c("Lat", "Lon", "species_rich")) %>%
 
 You can skip this if you're fitting a non-spatial model (e.g., GLM or GLMM), but if you're stopping there then why use INLA-SPDE in the first place?
 
-First thing we need to do is set up the spatial structure in the data itself because working with `sf` objects makes everything easier.
+First comes setting up the spatial structure in the data itself because working with `sf` objects makes everything easier.
 
 ```{r data, results = FALSE}
 # make spatial
@@ -138,7 +138,7 @@ kjGeo <- st_as_sf(kjRaw,
                   crs = 4326)
 ```
 
-SPDE models start with the mesh, implemented using `fmesher`. At its simplest, we can do this automatically with `sf` objects or raw coordinates. In general, the more mesh nodes there are, the longer the model will take to run. If you want to test lots of models without worrying too much about *how well the estimation works*, coarse meshes are best. 
+SPDE models start with the mesh, implemented using `fmesher`. At its simplest, you can do this automatically with `sf` objects or raw coordinates. In general, the more mesh nodes there are, the longer the model will take to run. If you want to test lots of models without worrying too much about *how well the estimation works*, coarse meshes are best. 
 
 `fmesher` started as a function within INLA, so older code uses slightly different syntax (more information on converting via the [vignette](https://inlabru-org.github.io/fmesher/articles/inla_conversion.html)). These days `fmesher` can be used to specify spatial fields for other packages like `tinyVAST` and `sdmTMB` too; other packages like `gllvm` and `Hmsc` are working on compatability. `fmesher` builds a mesh based on triangles, where values (e.g., of covariates, posterior estimates, spatial fields) are treated as the same at all points within a single triangle. It's not *truly* continuous in a strict sense, but you can get very close by creating finer and finer meshes.
 
@@ -174,7 +174,7 @@ meshPlot <- ggplot() +
 meshPlot
 ```
 
-Next, we make the SPDE object for spatial models. We again use the base function, but `inla.spde2.pcmatern` is a nice alternative when you're working with big data: you can set **penalised complexity priors** to avoid bloat in the spatial structure. Our data is quite compact already, so this isn't necessary here.
+Next, make the SPDE object for spatial models. I again use the base function, but `inla.spde2.pcmatern` is a nice alternative when you're working with big data: you can set **penalised complexity priors** to avoid bloat in the spatial structure. This data is quite compact already, so this isn't necessary here.
 
 You can add additional priors on spatial scale/range ($\kappa$ or $\rho$) and variance ($\tau$ or $\sigma$) depending on whether you're using the [`matern`](https://rdrr.io/github/INBO-BMK/INLA/man/inla.spde2.matern.html) or [`pcmatern`](https://rdrr.io/github/INBO-BMK/INLA/man/inla.spde2.pcmatern.html) functions, respectively. There is also an $\alpha$ parameter directly controlling the SPDE's smoothness (since it's fit using splines) between 0 and 2. $\alpha$ is 2 by default in the 2D case, and you'll rarely need to mess with it for normal spatial models.
 
@@ -189,7 +189,7 @@ And that's it! You can import data and set up a simple model with just 10 lines 
 
 ### Model Formulation
 
-We're working with species richness, which is positive discrete (i.e., no values below zero and no decimal values). It varies between `r min(kjRaw$species_rich)` and `r max(kjRaw$species_rich)`.
+I'm working with species richness, which is positive discrete (i.e., no values below zero and no decimal values). It varies between `r min(kjRaw$species_rich)` and `r max(kjRaw$species_rich)`.
 
 ```{r richPlot, message = FALSE, fig.align = "center", echo = FALSE}
 richPlot <- ggplot(kjRaw, aes(x = species_rich)) + geom_histogram() + theme_bw() + 
@@ -197,13 +197,13 @@ richPlot <- ggplot(kjRaw, aes(x = species_rich)) + geom_histogram() + theme_bw()
 richPlot
 ```
 
-INLA supports an dizzying amount of distribution families that aren't well [documented](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/). For our case, [Gaussians](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/gaussian.pdf) are a decent baseline choice but cannot be constrained to positive values only. [Poisson](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/poisson.pdf) is a common alternative (especially [non-zero Poisson](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/nzpoisson.pdf)) though dispersion is always a concern. [Negative binomial distributions](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/nbinomial.pdf) can present another good option. 
+INLA supports an dizzying amount of distribution families that aren't well [documented](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/). In this case, [Gaussians](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/gaussian.pdf) are a decent baseline choice but cannot be constrained to positive values only. [Poisson](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/poisson.pdf) is a common alternative (especially [non-zero Poisson](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/nzpoisson.pdf)) though dispersion is always a concern. [Negative binomial distributions](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/nbinomial.pdf) can present another good option. 
 
-In this case, I use the [Tweedie distribution](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/tweedie.pdf)--which includes Poisson-Gamma, Gaussian, gamma, and quasi-Poisson. Tweedie particularly suits positive continuous and right-skewed distributions that may include zero inflation.[@gilchrist_use_2000] It comes with two hyperparameters: $\theta_1$, power, and $\theta_2$, log(dispersion). Power $p$ is actually $1 + \frac{\exp(\theta_1)}{1+\exp(\theta_1)}$. So when $p = 2$, we get a [quasi-Poisson](https://bookdown.org/mike/data_analysis/sec-quasi-poisson-regression.html) (Poisson with some dispersion); $p = 1$ gives us a [gamma distribution](https://library.virginia.edu/data/articles/getting-started-with-gamma-regression).
+In this case, I use the [Tweedie distribution](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/tweedie.pdf)--which includes Poisson-Gamma, Gaussian, gamma, and quasi-Poisson. Tweedie particularly suits positive continuous and right-skewed distributions that may include zero inflation.[@gilchrist_use_2000] It comes with two hyperparameters: $\theta_1$, power, and $\theta_2$, log(dispersion). Power $p$ is actually $1 + \frac{\exp(\theta_1)}{1+\exp(\theta_1)}$. So when $p = 2$, it's a [quasi-Poisson](https://bookdown.org/mike/data_analysis/sec-quasi-poisson-regression.html) (Poisson with some dispersion); $p = 1$ is a [gamma distribution](https://library.virginia.edu/data/articles/getting-started-with-gamma-regression).
 
 In short, the Tweedie is flexible and relatively easy to interpret. It takes a log-link in INLA, so make sure to exponentiate your coefficients on the response scale.
 
-Remember earlier that I mentioned the dangers of collinearity in linear additive regression models used for inference. To decide which covariates to include in our model, we look at the correlation plot. In reality, collinearity is better checked after model fit, but correlation can sometimes (not always) give a good early warning of possible issues. We decide that the community-weighted means (CWM) of leaf dry matter content (LDMC) and leaf area are too closely correlated. Mean temperature and freezing degree days (FDD) have the same issue. 
+Remember earlier that I mentioned the dangers of collinearity in linear additive regression models used for inference. To decide which covariates to include, I look at the correlation plot. In reality, collinearity is better checked after model fit, but correlation can sometimes (not always) give a good early warning of possible issues. I decide that the community-weighted means (CWM) of leaf dry matter content (LDMC) and leaf area are too closely correlated. Mean temperature and freezing degree days (FDD) have the same issue. 
 
 ```{r covCor, echo = FALSE, message = FALSE, fig.align = "center"}
 ggplot(reshape2::melt(cor(kjRaw %>% select_if(is.numeric) %>% select(-c("Lat","Lon","N_TM35FIN","E_TM35FIN",
@@ -225,7 +225,7 @@ ggplot(reshape2::melt(cor(kjRaw %>% select_if(is.numeric) %>% select(-c("Lat","L
         panel.grid.major=element_blank()) 
 ```
 
-Finally, modern modelling packages are increasingly sensitive to scaled versus unscaled covariates, and `INLA` is no exception. What to rescale and how is complicated for complex structures (e.g., `sf` and `terra` spatial covariates; temporal structures), but it's straightforward in a normal dataframe like this. However, this affects model interpretation, so we want to retain the original means and variances for later.
+Finally, modern modelling packages are increasingly sensitive to scaled versus unscaled covariates, and `INLA` is no exception. What to rescale and how is complicated for complex structures (e.g., `sf` and `terra` spatial covariates; temporal structures), but it's straightforward in a normal dataframe like this. However, this affects model interpretation, so I want to retain the original means and variances for later.
 
 ```{r norm, message = FALSE}
 # rescale manually because scale() is a pain to deal with using tidyverse
@@ -245,7 +245,7 @@ metaStats
 
 ### Model Running
 
-`inlabru` syntax is relatively easy, and we'll ignore the complex options for now. I personally like the `bru_obs()` intermediate function, but it's optional in the newer versions. The `options = list()` argument for `bru()` has too many options to list out, but some that I've used before (and liked) include:
+`inlabru` syntax is relatively easy, and I'll exclude the complex options for now. I personally like the `bru_obs()` intermediate function, but it's optional in the newer versions. The `options = list()` argument for `bru()` has too many options to list out, but some that I've used before (and liked) include:
 
 * `lincomb`: maybe you're interested in a linear combination of covariates (e.g., grazing by two different species) which you can add
 * `quantiles`: are you unsatisfied with the median or want easier access to credible levels (e.g., 95% CI)?
@@ -286,7 +286,7 @@ formulaGeo <- species_rich ~ Intercept(1) + cwm_max_height + cwm_LDMC +
 fitGeo <- bru(formulaGeo, kjGeoNorm, family = "tweedie")
 ```
 
-`inlabru` *can* concurrently incorporate more complex effects, but the model specification bloats quickly, and you'll need to use the `bru_obs()` (previously called `like()`) between specifying the formula and fitting the model in order to set a more detailed likelihood. A lot of this functionality is new (especially for `terra` objects), but there are a examples of how to include [spatial covariates in point process models](https://inlabru-org.github.io/inlabruCourseMay2025/articles/lgcp_2d_covars.html). Syntax is broadly the same. I give an example below using the same syntax for our spatial field models. Posterior checks are left as an exercise to the reader because of syntax bloat.
+`inlabru` *can* concurrently incorporate more complex effects, but the model specification bloats quickly, and you'll need to use the `bru_obs()` (previously called `like()`) between specifying the formula and fitting the model in order to set a more detailed likelihood. A lot of this functionality is new (especially for `terra` objects), but there are a examples of how to include [spatial covariates in point process models](https://inlabru-org.github.io/inlabruCourseMay2025/articles/lgcp_2d_covars.html). Syntax is broadly the same. I give an example below using the same syntax for spatial field models. Posterior checks are left as an exercise to the reader because of syntax bloat.
 
 It's important to note that any *special* covariates you choose to include, `field` notation is essential. And below is an excellent demonstration that naming doesn't matter. However, when using this syntax, the `model = ` argument tells `inlabru` how to evaluate the object (especially if using a different data source outside the main dataframe). A very poorly organised list of `model` options can be found in the depths of [original `INLA` documentation](https://inla.r-inla-download.org/r-inla.org/doc/latent/). If just trying to fit a fixed effect, `model = "linear"` should work for `terra` objects. If having trouble with spatial objects, play around with manual options in `eval_spatial()` which usually runs in the background.
 
@@ -347,7 +347,7 @@ Start with the summary function. It gives a good overview.
 summary(fitGeo)
 ```
 
-In it is most of the non-spatial information we need. Contrary to what you might think, the only *truly spatial* part of our `inlabru` model is the `field` itself. Everything else functions normally via regression rules. I demonstrate how to interpret the intercept and one coefficient:
+In it is most of the relevant non-spatial information. Contrary to what you might think, the only *truly spatial* part of this `inlabru` model is the `field` itself. Everything else functions normally via regression rules. I demonstrate how to interpret the intercept and one coefficient:
 
 * **Intercept**: the typical site species richness when all covariates are at their mean values is `r round(exp(fitGeo$summary.fixed$mean[1]), 2)` with a [`r round(exp(fitGeo$summary.fixed[1,3]), 2)`, `r round(exp(fitGeo$summary.fixed[1,5]), 2)`] 95% credible interval
 * **FDD_T3**: when all other covariates are at their mean values, an extra freezing degree day leads to `r signif(exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)` `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "higher", "lower")` species richness with a [`r signif(exp(fitGeo$summary.fixed[2,3])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`, `r signif(exp(fitGeo$summary.fixed[2,5])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`] 95% credible interval
@@ -356,11 +356,11 @@ Those of you with any social sciences background may prefer the more concise Lat
 
 The specific formula to convert a coefficient output to "real world" language is `exp(inlaCoefficient)/sd(originalColumn)`. For FDD_T3, this is `exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE)`. Rinse and repeat with the credible interval bounds that you're interested in since they convert the same as coefficients. If you want to use the original values, you can say that a 1 standard deviation increase in FDDs leads to an `exp(inlaCoefficient)`, in this case `r signif(exp(fitGeo$summary.fixed$mean[2]), 2)`, `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "higher", "lower")` species richness. If you prefer social science language, then a 1 standard deviation increase in FDDs leads to a `r abs(signif(fitGeo$summary.fixed$mean[2], 2))`% `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "increase", "decrease")` in species richness (just the actual model coefficient itself). Communicate in the way that feels best to you.
 
-Remember, we are exponentiating because the Tweedie distribution takes a log link function in `INLA`. You can skip this step if using a distribution with a linear link, like Gaussian. If you're working with logistic link functions, I can only wish you good luck. Things also change a bit if you rescale or log your response variable (which can be done), but the general interpretative rules stay the same: consult these handy StackExchange posts for [quantiative](https://stats.stackexchange.com/questions/603213/interpretation-of-rescaled-coefficients-in-ols) and [language](https://stats.stackexchange.com/questions/407822/interpretation-of-standardized-z-score-rescaled-linear-model-coefficients) tips on interpreting models where both response variables and covariates are rescaled.
+Remember, I'm exponentiating because the Tweedie distribution takes a log link function in `INLA`. You can skip this step if using a distribution with a linear link, like Gaussian. If you're working with logistic link functions, I can only wish you good luck. Things also change a bit if you rescale or log your response variable (which can be done), but the general interpretative rules stay the same: consult these handy StackExchange posts for [quantiative](https://stats.stackexchange.com/questions/603213/interpretation-of-rescaled-coefficients-in-ols) and [language](https://stats.stackexchange.com/questions/407822/interpretation-of-standardized-z-score-rescaled-linear-model-coefficients) tips on interpreting models where both response variables and covariates are rescaled.
 
 There is no "significance" in Bayesian statistics in the same way as classical methods, but it's quite common to say that a 95% credible interval excluding zero shows meaningful evidence of an effect. This is why I suggested (and provided code for) different quantiles in the `bru` call: you can also do this at the 90% credible level, for example.
 
-Dealing with the spatial field is a bit more complicated and is best handled using the `predict` function. This is relatively new: example articles and vignettes are slowly showing the ways it can be used to replace traditional model outputs for more robust estimation. Predictions are especially useful at understanding the model's spatial behaviour. We show the mean model prediction when all covariates are at their average values (including the spatially variant field and the fixed intercept).
+Dealing with the spatial field is a bit more complicated and best handled using the `predict` function. This is relatively new: example articles and vignettes are slowly showing the ways it can be used to replace traditional model outputs for more robust estimation. Predictions are especially useful at understanding the model's spatial behaviour. I show the mean model prediction when all covariates are at their average values (including the spatially variant field and the fixed intercept).
 
 ```{r bounds, echo = FALSE}
 # run this time because I didn't evaluate it previously
@@ -405,7 +405,7 @@ spatPlot <- ggplot() +
 spatPlot
 ```
 
-We can also look at the underlying parameters driving spatial field behaviour, mainly the range and variance. These can be constrained with priors using `inla.spde2.pcmatern` if they look unsatisfactory (e.g., if you want a more constrained variance or broader range). The distributions' shapes look the same because of the underlying SPDE model architecture.
+You can also look at the underlying parameters driving spatial field behaviour, mainly the range and variance. These can be constrained with priors using the two `inla.spde2` functions if they look unsatisfactory (e.g., if you want a more constrained variance or broader range). The distributions' shapes look the same because of the underlying SPDE model architecture.
 
 ```{r rangePlot, fig.align = "center"}
 # use the spde.posterior to extract the full distribution of parameters of interest
@@ -421,21 +421,21 @@ var.plot <- plot(spde.logvar) + theme_bw()
 var.plot
 ```
 
-Bayes factor is another measure for inference which is the ratio of the marginal likelihoods (`mlik`) of two models. From the model object, you want the ["log marginal-likelihood (integration)"](https://groups.google.com/g/r-inla-discussion-group/c/1Zs00DttjEE). So if you want to measure the relative importance of a single term, you must fit models with and without the term of interest. [Wikipedia explains](https://en.wikipedia.org/wiki/Bayes_factor#Interpretation) how to interpret this well with good scientific references, but there are no commonly agreed-upon theoretical values (and be careful of which logarithmic base the table is in). But for example, we can compare models with and without spatial fields to see if the more complex structure is advisable. Its use remains debated, and some ponder if a likelihood comparison (i.e., not considering the priors and their contribution to a Bayesian posterior) is really the right way to go.[@gelman_bayesian_2015] 
+Bayes factor is another measure for inference which is the ratio of the marginal likelihoods (`mlik`) of two models. From the model object, you want the ["log marginal-likelihood (integration)"](https://groups.google.com/g/r-inla-discussion-group/c/1Zs00DttjEE). So if you want to measure the relative importance of a single term, you must fit models with and without the term of interest. [Wikipedia explains](https://en.wikipedia.org/wiki/Bayes_factor#Interpretation) how to interpret this well with good scientific references, but there are no commonly agreed-upon theoretical values (and be careful of which logarithmic base the table is in). But for example, you can compare models with and without spatial fields to see if the more complex structure is advisable. Its use remains debated, and some ponder if a likelihood comparison (i.e., not considering the priors and their contribution to a Bayesian posterior) is really the right way to go.[@gelman_bayesian_2015] 
 
-As an example, we consider models with or without a spatial field using the log likelihoods: `r round(fitGeo$mlik[1], 2)` for the spatial model and `r round(fitGLM$mlik[1], 2)` for the basic one. Their ratio is `r round(fitGeo$mlik[1]/fitGLM$mlik[1], 2)`, which weakly/moderately supports the inclusion of a spatial term. Our model is simple, so this isn't too shocking. 
+To demonstrate, I consider models with or without a spatial field using the log likelihoods: `r round(fitGeo$mlik[1], 2)` for the spatial model and `r round(fitGLM$mlik[1], 2)` for the basic one. Their ratio is `r round(fitGeo$mlik[1]/fitGLM$mlik[1], 2)`, which weakly/moderately supports the inclusion of a spatial term. My model is simple, so this isn't too shocking. 
 
 ### Diagnostics
 
 "Since all models are wrong the scientist must be alert to what is importantly wrong." - George Box[@box_science_1976]
 
-Stationarity (weak) and isotropy (strong) assumptions are best tackled theoretically by most users. Are we missing any linear fixed effects or spatial variance terms that would affect the spatial patterns across the pixels/points (i.e., stationarity) or across the whole study area in larger space (i.e. isotropy)? For example, maybe georichness is a strong spatial explainer of species richness in the Kilpisjärvi area that we do not account for via basic topography. Ordination methods (e.g., `gllvm`) can offer a nice way to examine the unmodelled structures.
+Stationarity (weak) and isotropy (strong) assumptions are best tackled theoretically by most users. Is the model missing any linear fixed effects or spatial variance terms that would affect the spatial patterns across the pixels/points (i.e., stationarity) or across the whole study area in larger space (i.e. isotropy)? For example, maybe georichness is a strong spatial explainer of species richness in the Kilpisjärvi area that's not included in basic topography. Ordination methods (e.g., `gllvm`) on residuals can offer a nice way to examine the unmodelled structures.
 
-Predictive scoring, if that's your focus, is a complex topic, and `inlabru` has a nice theoretical description and links to another package, `scoringRules` that can provide more help if you consult [the official article](https://inlabru-org.github.io/inlabru/articles/prediction_scores.html). Another older resource is [the INLA book](https://becarioprecario.bitbucket.io/inla-gitbook/ch-INLA.html#sec:modelassess). These generally require some testing set (data that we do not use to fit the model but generated in the same way) or at least a theoretically generated comparison dataset. Both of these are too much work for this exercise. In my experience, CPRS is often treated as a "gold standard" for predictive metrics. Sometimes, these are used as model evaluation for inference as well due to their good theoretical and practical implementation.
+Predictive scoring, if that's your focus, is a complex topic, and `inlabru` has a nice theoretical description and links to another package, `scoringRules` that can provide more help if you consult [the official article](https://inlabru-org.github.io/inlabru/articles/prediction_scores.html). Another older resource is [the INLA book](https://becarioprecario.bitbucket.io/inla-gitbook/ch-INLA.html#sec:modelassess). These generally require some testing set (data that you do not use to fit the model but generated in the same way) or at least a theoretically generated comparison dataset. Both of these are too much work for this exercise. In my experience, CPRS is often treated as a "gold standard" for predictive metrics. Sometimes, these are used as model evaluation for inference as well due to their good theoretical and practical implementation.
 
-Easier options to look at are CPO, WAIC, and DIC which are not computed by default and must be selected using `control.compute`, which we did not do. Residuals, too, must be enabled with `control.compute`; deviance residuals are the default and easy to get. In classical statistics, deviance residuals are a more general form of Pearson residuals and better account for distributions with mean-variance relationships.
+Easier options to look at are CPO, WAIC, and DIC which are not computed by default and must be selected using `control.compute`, which I did not do. Residuals, too, must be enabled with `control.compute`; deviance residuals are the default and easy to get. In classical statistics, deviance residuals are a more general form of Pearson residuals and better account for distributions with mean-variance relationships.
 
-If you're working with point process models (i.e., modelling the specific spatial realisation of a process), then all of the default `INLA` options are not advised. [Information criteria](https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ) and [CPO](https://groups.google.com/g/r-inla-discussion-group/c/H99TgXGhI6M/m/cY5Zo9nCAgAJ) both show these issues, and a more targeted [residual analysis tutorial](https://inlabru-org.github.io/inlabru/articles/2d_lgcp_residuals_sf.html) can guide your evaluation.
+If you're working with point process models (i.e., modelling the specific spatial realisation of a process), then all of the default `INLA` options are not advised. [Information criteria](https://groups.google.com/g/r-inla-discussion-group/c/EppMtvdJ610/m/YwjpRvoAAgAJ) and [CPO](https://groups.google.com/g/r-inla-discussion-group/c/H99TgXGhI6M/m/cY5Zo9nCAgAJ) both show some issues, and a more targeted [residual analysis tutorial](https://inlabru-org.github.io/inlabru/articles/2d_lgcp_residuals_sf.html) can guide your evaluation.
 
 ```{r rerun}
 # rerun the model to get everything for posterior checks
@@ -449,10 +449,9 @@ fitGeoDiag <- bru_rerun(fitGeo,
 
 For simple conclusions, scoring criteria analysis and residual examination works exactly the same as elsewhere. All of these correspond perfectly to the number of rows in the base data (i.e., 1 score or residual per observation), so it's easy to add it back to the original data and visualise as you see fit. 
 
-Plotting against richness, it looks like our spatial model should be refined. The gap around 0 isn't an issue and [an effect of the log transformation](https://groups.google.com/g/r-inla-discussion-group/c/572O2Nrev5Y/m/QaxKIiibFQAJ). But we both underestimate higher richness and overestimate lower richness. This isn't that shocking: a simple model will pull everything towards the mean value. We don't have any 0 values in the data; if we did, the strong negative residuals for low richness might motivate a zero-inflated distribution. Try out a residual vs fitted plot if you'd like to see how a cruder metric compares.
+Plotting against richness, it looks like the spatial model should be refined. The gap around 0 isn't an issue and [an effect of the log transformation](https://groups.google.com/g/r-inla-discussion-group/c/572O2Nrev5Y/m/QaxKIiibFQAJ). But the model both underestimates higher richness and overestimates lower richness. This isn't that shocking: a simple model will pull everything towards the mean value. The data has no 0 values; if it did, the strong negative residuals for low richness might motivate a zero-inflated distribution. Try out a residual versus fitted plot if you'd like to see how a cruder metric compares.
 
 ```{r residInspect, fig.align = "center"}
-# rerun the model to get everything for posterior checks
 kjRes <- cbind(kjGeo, fitGeoDiag$residuals$deviance.residuals)
 
 ggplot(kjRes, aes(y = fitGeoDiag.residuals.deviance.residuals, x = species_rich)) +
@@ -461,7 +460,7 @@ ggplot(kjRes, aes(y = fitGeoDiag.residuals.deviance.residuals, x = species_rich)
   ylab("Deviance residuals") + xlab("Species richness")
 ```
 
-Finally, it's always good practice to look at at least the distribution posterior hyperparameters: was Tweedie a good choice? First we see our dispersion parameter quite narrowly around its mean `r signif(fitGeo$summary.hyperpar$mean[2], 2)`. So Poisson would have  performed poorly. The power parameter behaves similarly around its mean `r signif(fitGeo$summary.hyperpar$mean[1], 2)`: the Tweedie ends up neither a full gamma or quasi-Poisson distribution, and simplifying it to one of its constituent distributions is probably a poor idea. So we do a decent job specifying an effective mean-variance relationship in our underling distribution. These numbers are all found in the first `summary()` call but can be directly accessed using `fitGeo$summary.hyperpar`. 
+Finally, it's always good practice to look at least the distribution posterior hyperparameters: was Tweedie a good choice? First, the dispersion parameter varies little around its mean `r signif(fitGeo$summary.hyperpar$mean[2], 2)`. So Poisson would have performed poorly. The power parameter behaves similarly around its mean `r signif(fitGeo$summary.hyperpar$mean[1], 2)`: the Tweedie ends up neither a full gamma or quasi-Poisson distribution, and simplifying it to one of its constituent distributions is probably a poor idea. So the model does a decent job specifying an effective mean-variance relationship by picking a suitable distribution. These numbers are all found in the first `summary()` call but can be directly accessed using `fitGeo$summary.hyperpar`. 
 
 These sorts of simpler 2D spatial field models can be interpreted the same as any other regression along with some notable hyperparameter checks. However, you can and should go as deep as you want. Sensitivity analysis is a relatively low-cost way of seeing how changing (hyper)parameters, formulations, and priors will affect results and lead to a more sensible model. If your dataset is small enough to allow lots of model exploration, definitely give it a try.
 
