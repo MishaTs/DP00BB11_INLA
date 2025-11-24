@@ -304,7 +304,7 @@ meshCentre <- st_centroid(sfMesh)
 library(elevatr)
 library(terra)
 # arbitrary call for demonstrative purposes
-elevRL <- get_elev_raster(locations = meshCentre, z = 5)
+elevRL <- get_elev_raster(locations = meshCentre, z = 10)
 # convert from RasterLayer to SpatRaster
 # elevatr's GitHub says they're changing output object type, so maybe unnecessary in the future
 elevT <- crop(terra::rast(elevRL, "epsg:4326"), 
