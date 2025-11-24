@@ -117,6 +117,13 @@
 	file = {Full Text PDF:/Users/mishat/Zotero/storage/J4L5VRNH/Bakka et al. - 2018 - Spatial modeling with R-INLA A review.pdf:application/pdf;Snapshot:/Users/mishat/Zotero/storage/4NY2AHXD/wics.html:text/html},
 }
 
+@misc{inla_development_team_tweedie_nodate,
+	title = {Tweedie},
+	url = {https://inla.r-inla-download.org/r-inla.org/doc/likelihood/tweedie.pdf},
+	urldate = {2024-08-07},
+	author = {INLA Development Team},
+}
+
 @inproceedings{gilchrist_use_2000,
 	address = {Heidelberg},
 	title = {The use of the {Tweedie} distribution in statistical modelling},
@@ -220,4 +227,21 @@ The book features fully reproducible examples of several disease and environment
 	keywords = {Bayesian inference, INLA, Mathematical software, Parallelism},
 	pages = {25},
 	file = {Full Text PDF:/Users/mishat/Zotero/storage/CDDVBVDT/Gaedke-Merzhäuser et al. - 2022 - Parallelized integrated nested Laplace approximations for fast Bayesian inference.pdf:application/pdf},
+}
+
+@article{villejo_data_2023,
+	title = {Data fusion in a two-stage spatio-temporal model using the {INLA}-{SPDE} approach},
+	volume = {54},
+	issn = {2211-6753},
+	url = {https://www.sciencedirect.com/science/article/pii/S2211675323000192},
+	doi = {10.1016/j.spasta.2023.100744},
+	abstract = {This paper proposes a two-stage estimation approach for a spatial misalignment scenario that is motivated by the epidemiological problem of linking pollutant exposures and health outcomes. We use the integrated nested Laplace approximation method to estimate the parameters of a two-stage spatio-temporal model — the first stage models the exposures using data fusion while the second stage links the health outcomes to exposures. The first stage is based on the Bayesian melding model, which assumes a common latent field for the different data sources for the pollutants. The second stage fits a generalized linear mixed model using the spatial averages of the estimated latent field, and additional spatial and temporal random effects. Uncertainty from the first stage is accounted for by simulating repeatedly from the posterior predictive distribution of the latent field. A simulation study was carried out to assess the impact of the sparsity of the data on the monitors, number of time points, and the specification of the priors in terms of the biases, RMSEs, and coverage probabilities of the parameters and the block-level exposure estimates. The results show that the parameters are generally estimated correctly but there is difficulty in estimating the Matèrn field parameters. The effect of exposures on the health outcomes is the primary parameter of interest for spatial epidemiologists and health policy makers, and our results show that the proposed method estimates these very well. The proposed method is applied to measurements of NO2 concentration and respiratory hospitalizations for year 2007 in England. The results show that an increase in NO2 levels is significantly associated with an increase in the relative risks of the health outcome. Also, there is a strong spatial structure in the risks, a strong temporal autocorrelation, and a significant spatio-temporal interaction effect.},
+	urldate = {2025-11-24},
+	journal = {Spatial Statistics},
+	author = {Villejo, Stephen Jun and Illian, Janine B and Swallow, Ben},
+	month = apr,
+	year = {2023},
+	keywords = {Data fusion, Integrated nested Laplace approximation (INLA), Spatial misalignment, Stochastic partial differential equations (SPDE)},
+	pages = {100744},
+	file = {ScienceDirect Full Text PDF:/Users/mishat/Zotero/storage/KXHVEW3Q/Villejo et al. - 2023 - Data fusion in a two-stage spatio-temporal model using the INLA-SPDE approach.pdf:application/pdf;ScienceDirect Snapshot:/Users/mishat/Zotero/storage/DLL6L2S5/S2211675323000192.html:text/html},
 }

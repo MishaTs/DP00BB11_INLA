@@ -203,7 +203,7 @@ INLA supports an dizzying amount of distribution families that aren't well [docu
 
 In this case, I use the [Tweedie distribution](https://inla.r-inla-download.org/r-inla.org/doc/likelihood/tweedie.pdf)--which includes Poisson-Gamma, Gaussian, gamma, and quasi-Poisson. Tweedie particularly suits positive continuous and right-skewed distributions that may include zero inflation.[@gilchrist_use_2000] It comes with two hyperparameters: $\theta_1$, power, and $\theta_2$, log(dispersion). Power $p$ is actually $1 + \frac{\exp(\theta_1)}{1+\exp(\theta_1)}$. So when $p = 2$, it's a [quasi-Poisson](https://bookdown.org/mike/data_analysis/sec-quasi-poisson-regression.html) (Poisson with some dispersion); $p = 1$ is a [gamma distribution](https://library.virginia.edu/data/articles/getting-started-with-gamma-regression).
 
-In short, the Tweedie is flexible and relatively easy to interpret. It takes a log-link in INLA, so make sure to exponentiate your coefficients on the response scale.
+In short, the Tweedie is flexible and relatively easy to interpret. It takes a log-link in INLA, so make sure to exponentiate your coefficients on the response scale. For other data you might use, just note that the Tweedie also has [a scale parameter that determines model convergence](https://groups.google.com/g/r-inla-discussion-group/c/jqsJIa6QWBo). It doesn't matter for results what the term actually is because transformations and back-computations, so play around with it if you're having model convergence issues.
 
 Remember earlier that I mentioned the dangers of collinearity in linear additive regression models used for inference. To decide which covariates to include, I look at the correlation plot. In reality, collinearity is better checked after model fit, but correlation can sometimes (not always) give a good early warning of possible issues. I decide that the community-weighted means (CWM) of leaf dry matter content (LDMC) and leaf area are too closely correlated. Mean temperature and freezing degree days (FDD) have the same issue. 
 
@@ -475,6 +475,35 @@ Now is a time of change for `inlabru` as the package is going through major upda
 Feel free to [email me](mailto:Michael.Tseitlin@oulu.fi) or ask today/tomorrow if you think some of these apply to your own research and you want more help.
 
 If you'd rather get help from the source, `INLA` has [a great Q&A discussion forum](https://groups.google.com/g/r-inla-discussion-group) where Finn and Håvard (the original authors and package developers) regularly comment and troubleshoot code from the community. When in doubt, just ask! It's also possible you're not the first one to have a problem, so maybe you'll just find an answer by searching through it.
+
+## Bonus: Model Equations
+
+Each `INLA` model has its own structure depending on the distribution family and structure. The part two model from Villejo et al is a good guide to basic spatial structure modelling.[@villejo_data_2023] An original tutorial through base `INLA` with model equations is syntactically dated but can serve as another good guide for the underlying formulae.[@blangiardo_spatial_2015] Both of these references specifically describe spatiotemporal models.
+
+This example only has a spatial effect, so the specification is slightly simpler:
+
+$$log(\text{Richness}_i) = \beta_0 + \beta_1*\text{CWM Max Height}_i + \beta_2*\text{CWM LDMC}_i + \beta_3*\text{FDD}_i + \beta4*\text{GDD3} + \beta_5 * \text{Median Moist}_i + \xi_i$$
+where the $\beta$ coefficients represent the effect of a fixed covariate for our terms of interest and $\xi$ is a spatially structured term for the latent Gaussian estimated via SPDE. Note that the core responses $\text{Richness}_i$ are assumed to be conditionally independent given the effects: they ought not be structurally dependent in a way that you exclude from the model.
+
+INLA's definition of Tweedie is a bit messy for most casual users:
+
+$$Tw(\alpha, \gamma, \lambda) = \sum_{i=1}^{N} X_i, \quad \{X_i\} \overset{\mathrm{iid}}{\sim} \Gamma(\alpha,\gamma), \quad N \overset{\perp}{\sim} Poisson(\lambda)$$
+
+using iid gamma and independent Poisson variables to define model components.[@inla_development_team_tweedie_nodate] In `INLA`, $Y$ has mean $\mu = \lambda \alpha \gamma$, power parameter $p = \frac{\alpha+2}{\alpha+1}$, and dispersion $\frac{\phi}{w} = \frac{\lambda^{1-p}(\alpha \gamma)^{2-p}}{2-p}$ including a fixed positive term $w$, a dispersion-specific scaling parameter.[@inla_development_team_tweedie_nodate] This forces $Y$'s mean $\mu$ to be positive and gives variance $\frac{\phi}{w}\mu^p$.[@inla_development_team_tweedie_nodate] 
+
+The richnesses are drawn from this distribution, so $\text{Richness}_i \sim Tw(\alpha, \gamma, \lambda)$.
+
+To give even more implementation detail, Tweedie specifies model hyperparameters $(\theta_1,\theta_2)$ as
+
+$$p = 1 + \frac{\exp(\theta_1)}{1+\exp(\theta_1)}, \quad 1 < p < 2$$
+
+and
+
+$$\phi = \exp(\theta_2), \quad \phi > 0$$
+
+where $p = 1$ simplifies to a (quasi)Poission distribution depending on dispersion, and $p = 2$ simplifies to a Gamma distribution.[@inla_development_team_tweedie_nodate]
+
+The Tweedie a user encounters in `INLA` is practically specified using $Tw(\theta_1, \theta_2, w)$ but still using the underlying distributional structure above. As the dispersion parameter is de-linked from the scale parameter when specifying hyperparameters, you should take care not to violate any underlying distributional structures in manual hyperprior specifications.
 
 ## Acknowledgements
 
