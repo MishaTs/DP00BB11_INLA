@@ -478,12 +478,12 @@ If you'd rather get help from the source, `INLA` has [a great Q&A discussion for
 
 ## Bonus: Model Equations
 
-Each `INLA` model has its own structure depending on the distribution family and structure. The part two model from Villejo et al is a good guide to basic spatial structure modelling.[@villejo_data_2023] An original tutorial through base `INLA` with model equations is syntactically dated but can serve as another good guide for the underlying formulae.[@blangiardo_spatial_2015] Both of these references specifically describe spatiotemporal models.
+Each `INLA` model has its own structure depending on the distribution family and structure. The part two model from Villejo et al. (2023) is a good guide to basic spatial structure modelling.[@villejo_data_2023] An original tutorial paper through base `INLA` with model equations is syntactically dated but can serve as another good guide for the underlying formulae.[@blangiardo_spatial_2015] Both of these references specifically describe spatiotemporal models.
 
 This example only has a spatial effect, so the specification is slightly simpler:
 
 $$log(\text{Richness}_i) = \beta_0 + \beta_1*\text{CWM Max Height}_i + \beta_2*\text{CWM LDMC}_i + \beta_3*\text{FDD}_i + \beta4*\text{GDD3} + \beta_5 * \text{Median Moist}_i + \xi_i$$
-where the $\beta$ coefficients represent the effect of a fixed covariate for our terms of interest and $\xi$ is a spatially structured term for the latent Gaussian estimated via SPDE. Note that the core responses $\text{Richness}_i$ are assumed to be conditionally independent given the effects: they ought not be structurally dependent in a way that you exclude from the model.
+where the $\beta$ coefficients represent the effect of a fixed covariate for our terms of interest and $\xi$ is a spatially structured term for the latent Gaussian estimated via SPDE: Villejo et al. (2023) would call this a structured spatial effect $\psi_i$. Note that the core responses $\text{Richness}_i$ are assumed to be conditionally independent given the effects: they ought not be structurally dependent in a way that you exclude from the model.
 
 INLA's definition of Tweedie is a bit messy for most casual users:
 
@@ -503,7 +503,7 @@ $$\phi = \exp(\theta_2), \quad \phi > 0$$
 
 where $p = 1$ simplifies to a (quasi)Poission distribution depending on dispersion, and $p = 2$ simplifies to a Gamma distribution.[@inla_development_team_tweedie_nodate]
 
-The Tweedie a user encounters in `INLA` is practically specified using $Tw(\theta_1, \theta_2, w)$ but still using the underlying distributional structure above. As the dispersion parameter is de-linked from the scale parameter when specifying hyperparameters, you should take care not to violate any underlying distributional structures in manual hyperprior specifications.
+The Tweedie a user encounters in `INLA` is practically specified using $Tw(\theta_1, \theta_2, w)$ but still using the underlying distributional structure above. As the dispersion parameter is de-linked from the power parameter when specifying hyperparameters, you should take care not to violate any underlying distributional structures in manual hyperprior specifications.
 
 ## Acknowledgements
 
