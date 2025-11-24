@@ -5,8 +5,10 @@ Lecture notes and materials for DP00BB11 State-of-the-art Statistical Modelling 
 # Contents
 
 * `.gitignore`: tells git what files not to track (e.g., Pekka's data)
-* `INLA_Notes.Rmd`: the R Markdown where the actual work takes place
-* `INLA_Notes.html`: the `html` file produced by the `Rmd` after knitting
+* `Day2_INLASlides.pdf`: summary slides (of notes) in PDF
+* `Day2_INLASlides.pptx`: summary slides in PPT
+* `INLA_Notes.Rmd`: lecture notes source file
+* `INLA_Notes.html`: main lecture notes file for student access
 * `nature.csl`: style format for citations in the markdown
 * `refINLA.bib`: bibliography file cited in the markdown (exported from Zotero)
 
