@@ -517,6 +517,6 @@ The Tweedie a user encounters in `INLA` is practically specified using $Tw(\thet
 
 ## Acknowledgements
 
-Many of the links, references, and materials came from [Ben Swallow](https://ben-swallow-research.github.io/) during his supervison of my MSc dissertation. The theory and background relied on older slides from a 2018 Spatial Processes course at St Andrews by [Janine Illian](https://www.gla.ac.uk/schools/mathematicsstatistics/staff/janineillian/). Newer `inlabru` materials came from Finn Lindgren's [2025 `inlabru` course](https://inlabru-org.github.io/inlabruCourseMay2025/index.html).
+Many of the links, references, and materials came from [Ben Swallow](https://ben-swallow-research.github.io/) while supervising my MSc dissertation. Newer `inlabru` materials came from Finn Lindgren's [2025 `inlabru` course](https://inlabru-org.github.io/inlabruCourseMay2025/index.html).
 
 # References
