@@ -205,7 +205,7 @@ In this case, I use the [Tweedie distribution](https://inla.r-inla-download.org/
 
 In short, the Tweedie is flexible and relatively easy to interpret. It takes a log-link in INLA, so make sure to exponentiate your coefficients on the response scale. For other data you might use, just note that the Tweedie also has [a scale parameter that determines model convergence](https://groups.google.com/g/r-inla-discussion-group/c/jqsJIa6QWBo). It doesn't matter for results what the term actually is because transformations and back-computations, so play around with it if you're having model convergence issues.
 
-Remember earlier that I mentioned the dangers of collinearity in linear additive regression models used for inference. To decide which covariates to include, I look at the correlation plot. In reality, collinearity is better checked after model fit, but correlation can sometimes (not always) give a good early warning of possible issues. I decide that the community-weighted means (CWM) of leaf dry matter content (LDMC) and leaf area are too closely correlated. Mean temperature and freezing degree days (FDD) have the same issue. 
+Remember earlier that I mentioned the dangers of collinearity in linear additive regression models used for inference. To decide which covariates to include, I look at the correlation plot. In reality, collinearity is better checked after model fit, but correlation can sometimes (not always) give a good early warning of possible issues. I decide that the community-weighted means (CWM) of leaf dry matter content (LDMC) and leaf area are too closely correlated. Mean soil temperature and frost degree days (FDD) have the same issue. 
 
 ```{r covCor, echo = FALSE, message = FALSE, fig.align = "center"}
 ggplot(reshape2::melt(cor(kjRaw %>% select_if(is.numeric) %>% select(-c("Lat","Lon","N_TM35FIN","E_TM35FIN",
@@ -257,7 +257,6 @@ metaStats
 * `bru_verbose`: set to TRUE for basic messages about the fit; set to 2 or 3 for even more details
 
 First, I show a basic non-spatial GLM with `inlabru` syntax. Compare with `bayesreg` or any other regression method of your choice if you'd like.
-
 
 ```{r baseModel, message = FALSE}
 # write the formula
@@ -341,7 +340,7 @@ names(fitGeo)
 
 ### Interpretation
 
-The following section contains in-line code evaluation. If you're confused about where a number came from, consult the `.rmd` file in [the GitHub repo](https://github.com/MishaTs/DP00BB11_INLA). This section starts on line 327.
+The following section contains in-line code evaluation. If you're confused about where a number came from, consult the `.rmd` file in [the GitHub repo](https://github.com/MishaTs/DP00BB11_INLA). This section starts on line 341.
 
 Start with the summary function. It gives a good overview.
 
@@ -352,7 +351,7 @@ summary(fitGeo)
 In it is most of the relevant non-spatial information. Contrary to what you might think, the only *truly spatial* part of this `inlabru` model is the `field` itself. Everything else functions normally via regression rules. I demonstrate how to interpret the intercept and one coefficient:
 
 * **Intercept**: the typical site species richness when all covariates are at their mean values is `r round(exp(fitGeo$summary.fixed$mean[1]), 2)` with a [`r round(exp(fitGeo$summary.fixed[1,3]), 2)`, `r round(exp(fitGeo$summary.fixed[1,5]), 2)`] 95% credible interval
-* **FDD_T3**: when all other covariates are at their mean values, an extra freezing degree day leads to `r signif(exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)` `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "higher", "lower")` species richness with a [`r signif(exp(fitGeo$summary.fixed[2,3])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`, `r signif(exp(fitGeo$summary.fixed[2,5])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`] 95% credible interval
+* **FDD_T3**: when all other covariates are at their mean values, an extra frost degree day leads to `r signif(exp(fitGeo$summary.fixed$mean[2])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)` `r ifelse(fitGeo$summary.fixed$mean[2] >= 0, "higher", "lower")` species richness with a [`r signif(exp(fitGeo$summary.fixed[2,3])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`, `r signif(exp(fitGeo$summary.fixed[2,5])/sd(kjRaw$FDD_T3, na.rm = TRUE), 2)`] 95% credible interval
 
 Those of you with any social sciences background may prefer the more concise Latin term "ceteris paribus" (i.e., "all else held equal") that helps make interpretations like this read more concisely.
 
@@ -451,7 +450,7 @@ fitGeoDiag <- bru_rerun(fitGeo,
 
 For simple conclusions, scoring criteria analysis and residual examination works exactly the same as elsewhere. All of these correspond perfectly to the number of rows in the base data (i.e., 1 score or residual per observation), so it's easy to add it back to the original data and visualise as you see fit. 
 
-Plotting against richness, it looks like the spatial model should be refined. The gap around 0 isn't an issue and [an effect of the log transformation](https://groups.google.com/g/r-inla-discussion-group/c/572O2Nrev5Y/m/QaxKIiibFQAJ). But the model both underestimates higher richness and overestimates lower richness. This isn't that shocking: a simple model will pull everything towards the mean value. The data has no 0 values; if it did, the strong negative residuals for low richness might motivate a zero-inflated distribution. Try out a residual versus fitted plot if you'd like to see how a cruder metric compares.
+Plotting against observed richness, it looks like the spatial model should be refined. The gap around 0 isn't an issue and [an effect of the log transformation](https://groups.google.com/g/r-inla-discussion-group/c/572O2Nrev5Y/m/QaxKIiibFQAJ). But the model both underestimates higher richness and overestimates lower richness. This isn't that shocking: a simple model will pull everything towards the mean value. The data has no 0 values; if it did, the strong negative residuals for low richness might motivate a zero-inflated distribution. 
 
 ```{r residInspect, fig.align = "center"}
 kjRes <- cbind(kjGeo, fitGeoDiag$residuals$deviance.residuals)
@@ -462,7 +461,18 @@ ggplot(kjRes, aes(y = fitGeoDiag.residuals.deviance.residuals, x = species_rich)
   ylab("Deviance residuals") + xlab("Species richness")
 ```
 
-Finally, it's always good practice to look at least the distribution posterior hyperparameters: was Tweedie a good choice? First, the dispersion parameter varies little around its mean `r signif(fitGeo$summary.hyperpar$mean[2], 2)`. So Poisson would have performed poorly. The power parameter behaves similarly around its mean `r signif(fitGeo$summary.hyperpar$mean[1], 2)`: the Tweedie ends up neither a full gamma or quasi-Poisson distribution, and simplifying it to one of its constituent distributions is probably a poor idea. So the model does a decent job specifying an effective mean-variance relationship by picking a suitable distribution. These numbers are all found in the first `summary()` call but can be directly accessed using `fitGeo$summary.hyperpar`. 
+If the model over and underpredicts richness at roughly equal rates, then that's generally ok. But if residuals are imbalanced, then that's a diagnostic issue indicating possible bias. In this case the model slightly overpredicts low values more often and more extremely than its underpredictions for large values. Thankfully the degree to which this happens isn't that extreme: personally, I think a plot like this is fine.
+
+```{r residHist, fig.align = "center"}
+ggplot(kjRes, aes(x = fitGeoDiag.residuals.deviance.residuals)) +
+  geom_histogram(binwidth = 0.4) + 
+  theme_bw() + 
+  xlab("Spatial model deviance residuals")
+```
+
+Getting fitted values is a bit more complicated because the `summary.fitted.values` do not match 1:1 the raw data. In this case there are `r nrow(fitGeoDiag$summary.fitted.values)` fitted values compared against `r nrow(kjRaw)` raw observations. The best way to do get fitted values is to feed in the original data to the `predict` function to ensure they can be combined together. You can then compute (prediction) residuals using your favourite method of choice. Try out a residuals versus fitted plot if you'd like to explore a more traditional plot for model diagnostics.
+
+Finally, it's always good practice to look at the distribution posterior hyperparameters: was Tweedie a good choice? First, the dispersion parameter varies little around its mean, `r signif(fitGeo$summary.hyperpar$mean[2], 2)`. So Poisson would have performed poorly. The power parameter behaves similarly around its mean, `r signif(fitGeo$summary.hyperpar$mean[1], 2)`: the Tweedie ends up neither a full gamma or quasi-Poisson distribution, and simplifying it to one of its constituent distributions is probably a poor idea. So the model does a decent job specifying an effective mean-variance relationship by picking a suitable distribution. These numbers are all found in the first `summary()` call but can be directly accessed using `fitGeo$summary.hyperpar`. 
 
 These sorts of simpler 2D spatial field models can be interpreted the same as any other regression along with some notable hyperparameter checks. However, you can and should go as deep as you want. Sensitivity analysis is a relatively low-cost way of seeing how changing (hyper)parameters, formulations, and priors will affect results and lead to a more sensible model. If your dataset is small enough to allow lots of model exploration, definitely give it a try.
 
@@ -482,7 +492,7 @@ Each `INLA` model has its own structure depending on the distribution family and
 
 This example only has a spatial effect, so the specification is slightly simpler:
 
-$$log(\text{Richness}_i) = \beta_0 + \beta_1*\text{CWM Max Height}_i + \beta_2*\text{CWM LDMC}_i + \beta_3*\text{FDD}_i + \beta4*\text{GDD3} + \beta_5 * \text{Median Moist}_i + \xi_i$$
+$$log(\text{Richness}_i) = \beta_0 + \beta_1*\text{CWM Max Height}_i + \beta_2*\text{CWM LDMC}_i + \beta_3*\text{FDD}_i + \beta4*\text{GDD} + \beta_5 * \text{Median Moisture}_i + \xi_i$$
 where the $\beta$ coefficients represent the effect of a fixed covariate for our terms of interest and $\xi$ is a spatially structured term for the latent Gaussian estimated via SPDE: Villejo et al. (2023) would call this a structured spatial effect $\psi_i$. Note that the core responses $\text{Richness}_i$ are assumed to be conditionally independent given the effects: they ought not be structurally dependent in a way that you exclude from the model.
 
 INLA's definition of Tweedie is a bit messy for most casual users:
